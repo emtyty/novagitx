@@ -1,0 +1,130 @@
+export interface GitRevision {
+  objectId: string
+  parentIds: string[]
+  author: string
+  authorEmail: string
+  authorUnixTime: number
+  committer: string
+  committerEmail: string
+  commitUnixTime: number
+  subject: string
+  body: string | null
+  refs: GitRef[]
+  branchLane: number
+  lanes: number[]
+}
+
+export interface GitRef {
+  objectId: string
+  completeName: string
+  name: string
+  type: 'head' | 'remote' | 'tag' | 'stash'
+  remote: string
+  isHead: boolean
+  ahead?: number
+  behind?: number
+}
+
+export interface GitItemStatus {
+  name: string
+  oldName: string | null
+  isNew: boolean
+  isDeleted: boolean
+  isChanged: boolean
+  isRenamed: boolean
+  isUnmerged: boolean
+  isStaged: boolean
+  renameSimilarity: number | null
+}
+
+export interface DiffLine {
+  type: 'ctx' | 'add' | 'del' | 'hunk'
+  oldLineNum: number | null
+  newLineNum: number | null
+  text: string
+}
+
+export interface DiffFile {
+  path: string
+  oldPath: string | null
+  status: 'M' | 'A' | 'D' | 'R' | 'C' | 'U' | '?'
+  addedLines: number
+  removedLines: number
+  lines: DiffLine[]
+}
+
+export interface BlameLine {
+  hash: string
+  author: string
+  authorTime: number
+  lineNum: number
+  text: string
+}
+
+export interface ReflogEntry {
+  hash: string
+  selector: string
+  action: string
+  date: string
+}
+
+export interface Remote {
+  name: string
+  fetchUrl: string
+  pushUrl: string
+}
+
+export interface ConflictFile {
+  path: string
+}
+
+export interface StashEntry {
+  index: number
+  ref: string
+  message: string
+  hash: string
+}
+
+export interface Submodule {
+  path: string
+  url: string
+  branch: string | null
+  hash: string | null
+  status: 'clean' | 'modified' | 'uninitialized'
+}
+
+export interface CleanEntry {
+  path: string
+  isDir: boolean
+}
+
+export interface RebaseCommit {
+  action: 'pick' | 'squash' | 'fixup' | 'drop' | 'reword' | 'edit'
+  hash: string
+  subject: string
+}
+
+export interface LogOptions {
+  maxCount?: number
+  skip?: number
+  onlyCurrentBranch?: boolean
+  author?: string
+  grep?: string
+  since?: string
+  until?: string
+}
+
+export interface RepoInfo {
+  path: string
+  name: string
+  currentBranch: string | null
+  isDetachedHead: boolean
+}
+
+export interface RefGroups {
+  branches: GitRef[]
+  remotes: GitRef[]
+  tags: GitRef[]
+  stashes: GitRef[]
+  head: string | null
+}

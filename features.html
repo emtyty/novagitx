@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NovaGitX — Feature Gap vs GitExtensions</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 40px 24px 80px;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f0f6fc;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #7d8590;
+      font-size: 13px;
+      margin-bottom: 36px;
+    }
+
+    /* Summary cards */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+
+    .stat {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+
+    .stat-num {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label { font-size: 12px; color: #7d8590; }
+
+    .green  { color: #3fb950; }
+    .red    { color: #f85149; }
+    .yellow { color: #d29922; }
+    .blue   { color: #58a6ff; }
+
+    /* Tier sections */
+    .tier {
+      margin-bottom: 40px;
+    }
+
+    .tier-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .tier-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .t1 { background: #3d1515; color: #f85149; border: 1px solid #6e2a2a; }
+    .t2 { background: #2d2200; color: #d29922; border: 1px solid #5a430a; }
+    .t3 { background: #0d2338; color: #58a6ff; border: 1px solid #1a3a5c; }
+    .ti { background: #0e2a1a; color: #3fb950; border: 1px solid #1a4a2a; }
+
+    .tier-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+
+    .tier-desc {
+      font-size: 12px;
+      color: #7d8590;
+      margin-left: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    thead tr { background: #1c2128; }
+
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #7d8590;
+      border-bottom: 1px solid #30363d;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #21262d;
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1c2128; }
+
+    .feature-name {
+      font-weight: 600;
+      color: #f0f6fc;
+      font-size: 13px;
+    }
+
+    .form-ref {
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 11px;
+      color: #7d8590;
+      background: #21262d;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #8b949e;
+      margin-top: 3px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-missing  { background: #3d1515; color: #f85149; border: 1px solid #6e2a2a; }
+    .badge-partial  { background: #2d2200; color: #d29922; border: 1px solid #5a430a; }
+    .badge-done     { background: #0e2a1a; color: #3fb950; border: 1px solid #1a4a2a; }
+
+    /* Implemented section */
+    .impl-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .impl-item {
+      display: flex;
+      align-items: center;
+      gap-8px;
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 7px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      color: #8b949e;
+      gap: 8px;
+    }
+
+    .impl-item::before {
+      content: "✓";
+      color: #3fb950;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid #21262d;
+      font-size: 12px;
+      color: #484f58;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>NovaGitX — Feature Gap Analysis</h1>
+  <p class="subtitle">Compared against GitExtensions (C# / WinForms reference) · Generated 2026-04-23</p>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num green">29</div>
+      <div class="stat-label">Git operations implemented</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num red">8</div>
+      <div class="stat-label">Tier 1 — critical gaps</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num yellow">12</div>
+      <div class="stat-label">Tier 2 — important gaps</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num blue">10</div>
+      <div class="stat-label">Tier 3 — advanced / power-user</div>
+    </div>
+  </div>
+
+  <!-- TIER 1 -->
+  <div class="tier">
+    <div class="tier-header">
+      <span class="tier-badge t1">1</span>
+      <span class="tier-title">Critical — Daily-use gaps</span>
+      <span class="tier-desc">Reached for multiple times a day by every GitExtensions user</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:220px">Feature</th>
+          <th style="width:160px">GitExtensions Form</th>
+          <th style="width:90px">Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="feature-name">File History</div></td>
+          <td><span class="form-ref">FormFileHistory</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Right-click any file → full commit history for that path. Uses <code>git log --follow -- &lt;file&gt;</code>. Shows renames, per-file graph, diff per revision.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Blame / Annotate</div></td>
+          <td><span class="form-ref">FormBlame</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Line-by-line <code>git blame</code> view with author, date, commit hash per line. Click a line → jump to that commit in the graph.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Partial Staging (hunks/lines)</div></td>
+          <td><span class="form-ref">FormCommit</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Currently only whole-file stage/unstage. GitExtensions lets you stage individual diff hunks or cherry-pick specific lines. Requires <code>git apply --cached</code> with a patched hunk.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Conflict Resolution UI</div></td>
+          <td><span class="form-ref">FormResolveConflicts</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">After a failed merge/rebase, lists conflicted files with ours/theirs/base. Launch external 3-way merge tool or use built-in. Mark as resolved. Commit merge.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Rebase</div></td>
+          <td><span class="form-ref">FormRebase</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note"><code>git rebase &lt;branch&gt;</code> with onto target, preserve-merges, and autosquash options. Separate from interactive rebase (Tier 2).</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Remote Management (CRUD)</div></td>
+          <td><span class="form-ref">FormRemotes</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Add, rename, remove remotes. Edit fetch/push URLs. Set default remote. Prune stale remote-tracking branches. Currently only fetch/pull/push exist — no way to manage remotes at all.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Reflog Viewer</div></td>
+          <td><span class="form-ref">FormReflog</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note"><code>git reflog</code> shows every HEAD movement. Essential recovery tool. Checkout any reflog entry to restore lost work.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Ahead / Behind Counts in Sidebar</div></td>
+          <td><span class="form-ref">FormBrowse</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Each branch in the sidebar shows ↑2 ↓3 relative to its upstream. Populated via <code>%(upstream:track)</code> in <code>for-each-ref</code>. Already partially available in ref data — just not displayed.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TIER 2 -->
+  <div class="tier">
+    <div class="tier-header">
+      <span class="tier-badge t2">2</span>
+      <span class="tier-title">Important — Frequent power-user features</span>
+      <span class="tier-desc">Used weekly; significant workflow gaps without them</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:220px">Feature</th>
+          <th style="width:160px">GitExtensions Form</th>
+          <th style="width:90px">Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="feature-name">Interactive Rebase</div></td>
+          <td><span class="form-ref">FormRebase</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Reorder, squash, fixup, drop, edit, reword commits. Requires parsing <code>git rebase -i</code> todo list and rendering it as a draggable UI.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Stash Improvements</div></td>
+          <td><span class="form-ref">FormStash</span></td>
+          <td><span class="badge badge-partial">Partial</span></td>
+          <td class="note">Missing: pop stash, <code>--include-untracked</code> / <code>--all</code> flags, stash diff view (see what's in a stash before applying), stash branch.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Compare Branches / Commits</div></td>
+          <td><span class="form-ref">FormCompareToBranch</span> / <span class="form-ref">FormDiff</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Diff any two refs (branches, tags, commits) against each other. Shows changed files + unified diff. Uses <code>git diff &lt;ref1&gt;...&lt;ref2&gt;</code>.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Format Patch / Apply Patch</div></td>
+          <td><span class="form-ref">FormFormatPatch</span> / <span class="form-ref">FormApplyPatch</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Export commits as <code>.patch</code> files (<code>git format-patch</code>). Apply patch files (<code>git am</code> / <code>git apply</code>). Common in email-based workflows.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Checkout Remote Branch (with tracking)</div></td>
+          <td><span class="form-ref">FormCheckoutBranch</span></td>
+          <td><span class="badge badge-partial">Partial</span></td>
+          <td class="note">When checking out <code>origin/feature</code> from the remotes list, should offer to create a local tracking branch. Currently sidebar remote items have no action.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Set Upstream Tracking</div></td>
+          <td>(branch management)</td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note"><code>git branch --set-upstream-to=origin/main</code>. Needed to fix detached ahead/behind counts and make pull/push work on branches without tracking.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Prune Remote Branches</div></td>
+          <td><span class="form-ref">FormDeleteRemoteBranch</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Delete remote-tracking refs that no longer exist on the server (<code>git fetch --prune</code> or <code>git remote prune origin</code>).</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Submodule Management</div></td>
+          <td><span class="form-ref">FormSubmodules</span> / <span class="form-ref">FormMergeSubmodule</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Add, init, update, sync, remove submodules. Show submodule status in graph. Repos with submodules are common in enterprise/monorepo setups.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Clean / Cleanup Repository</div></td>
+          <td><span class="form-ref">FormCleanupRepository</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note"><code>git clean -fd</code> with a file preview before deletion. Remove untracked files/directories safely.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Add to .gitignore</div></td>
+          <td><span class="form-ref">FormAddToGitIgnore</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Right-click untracked file in staging area → "Add to .gitignore". Appends pattern to <code>.gitignore</code> and refreshes status.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Edit .gitignore / .gitattributes</div></td>
+          <td><span class="form-ref">FormGitIgnore</span> / <span class="form-ref">FormGitAttributes</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">In-app editors for repo-level ignore and attributes files. Convenience over opening them in an external editor.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Checkout Specific Revision (Detach HEAD)</div></td>
+          <td><span class="form-ref">FormCheckoutRevision</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Explicitly checkout a commit hash and enter detached HEAD mode. Currently no UI path for this — only branch checkout exists.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TIER 3 -->
+  <div class="tier">
+    <div class="tier-header">
+      <span class="tier-badge t3">3</span>
+      <span class="tier-title">Advanced — Power-user / niche features</span>
+      <span class="tier-desc">Used occasionally; full parity with GitExtensions requires these</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:220px">Feature</th>
+          <th style="width:160px">GitExtensions Form</th>
+          <th style="width:90px">Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="feature-name">Search Commits</div></td>
+          <td><span class="form-ref">SearchWindow</span></td>
+          <td><span class="badge badge-partial">Partial</span></td>
+          <td class="note">LogFilter covers basic grep. Missing: search by file path changed, search by diff content (<code>-S</code> / <code>-G</code> pickaxe), jump-to-result highlighting.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Worktrees</div></td>
+          <td><span class="form-ref">WorktreeDialog</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note"><code>git worktree add/list/remove</code>. Work on multiple branches simultaneously without stashing. Increasingly common workflow.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Archive</div></td>
+          <td><span class="form-ref">FormArchive</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note"><code>git archive</code> — export tree at any ref as <code>.zip</code> or <code>.tar.gz</code>.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Repository Verify / fsck</div></td>
+          <td><span class="form-ref">FormVerify</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note"><code>git fsck</code> — find dangling/lost objects, broken refs, corrupted objects.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">GPG Commit Signing</div></td>
+          <td><span class="form-ref">RevisionGpgInfoControl</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Show GPG signature status per commit (✓ verified / ✗ invalid / unsigned). Sign commits via <code>-S</code> flag. Required by some orgs for compliance.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Mailmap Editor</div></td>
+          <td><span class="form-ref">FormMailMap</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Edit <code>.mailmap</code> to canonicalize author names/emails across history. Niche but useful for repos with contributor name inconsistencies.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Settings / Preferences</div></td>
+          <td><span class="form-ref">FormSettings</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Git config editor, external diff/merge tool selection, SSH key configuration, theme, font, date format, commit template. No settings UI exists yet.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Sparse Checkout</div></td>
+          <td><span class="form-ref">FormSparseWorkingCopy</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note"><code>git sparse-checkout</code> — check out only a subset of the working tree. Useful for huge monorepos.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Custom Scripts / Hooks UI</div></td>
+          <td><span class="form-ref">UserScriptContextMenuExtensions</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">User-defined commands added to context menus. Runs arbitrary shell scripts with commit/branch/path substitutions.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">GitHub / GitLab Integration</div></td>
+          <td><span class="form-ref">RepoHosting</span></td>
+          <td><span class="badge badge-missing">Missing</span></td>
+          <td class="note">Create pull requests, browse issues, fork repos directly from the app. Requires OAuth and REST API integration per hosting provider.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- IMPLEMENTED -->
+  <div class="tier">
+    <div class="tier-header">
+      <span class="tier-badge ti">✓</span>
+      <span class="tier-title">Already Implemented</span>
+      <span class="tier-desc">29 git operations across 13 UI components</span>
+    </div>
+    <div class="impl-grid">
+      <div class="impl-item">Clone repository</div>
+      <div class="impl-item">Init repository</div>
+      <div class="impl-item">Open / switch repository</div>
+      <div class="impl-item">Commit graph with lanes</div>
+      <div class="impl-item">Branch sidebar</div>
+      <div class="impl-item">Tag sidebar</div>
+      <div class="impl-item">Stash sidebar</div>
+      <div class="impl-item">Remote branches sidebar</div>
+      <div class="impl-item">Checkout branch</div>
+      <div class="impl-item">Create branch</div>
+      <div class="impl-item">Delete branch</div>
+      <div class="impl-item">Rename branch</div>
+      <div class="impl-item">Merge (merge / no-ff / squash)</div>
+      <div class="impl-item">Fetch</div>
+      <div class="impl-item">Pull</div>
+      <div class="impl-item">Push (with force-with-lease)</div>
+      <div class="impl-item">Stage file</div>
+      <div class="impl-item">Unstage file</div>
+      <div class="impl-item">Discard file changes</div>
+      <div class="impl-item">Commit</div>
+      <div class="impl-item">Amend commit</div>
+      <div class="impl-item">Revert commit</div>
+      <div class="impl-item">Reset (soft / mixed / hard)</div>
+      <div class="impl-item">Cherry-pick</div>
+      <div class="impl-item">Create tag (annotated / lightweight)</div>
+      <div class="impl-item">Delete tag</div>
+      <div class="impl-item">Push tag</div>
+      <div class="impl-item">Stash save / apply / drop</div>
+      <div class="impl-item">Commit diff viewer</div>
+      <div class="impl-item">Working tree diff</div>
+      <div class="impl-item">Staged diff</div>
+      <div class="impl-item">Log filter (author / message / branch)</div>
+      <div class="impl-item">Command palette (⌘K)</div>
+      <div class="impl-item">Recent repos switcher</div>
+    </div>
+  </div>
+
+  <footer>
+    Generated by Claude Code · NovaGitX project · Reference: gitextensions-master (C# / WinForms)
+  </footer>
+
+</div>
+</body>
+</html>

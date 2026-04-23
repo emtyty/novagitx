@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm show *)",
+      "Bash(node_modules/.bin/electron-vite --version)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('main',''\\), d.get\\('bin',''\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['version']\\)\")",
+      "Bash(ELECTRON_RENDERER_URL=http://localhost:5173 node_modules/electron/dist/Electron.app/Contents/MacOS/Electron out/main/index.js)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('node_modules/electron/package.json'\\)\\); print\\(json.dumps\\(d.get\\('exports', 'NO EXPORTS'\\), indent=2\\)\\)\")",
+      "Bash(npx --yes create-electron@latest test-evite-check --template react-ts)",
+      "Bash(npx --yes create-electron test-ev --template react-ts)",
+      "Bash(node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .)",
+      "Bash(python3 -c ' *)"
+    ],
+    "additionalDirectories": [
+      "/Users/nhunglc/NovaGitX/__TRACKED_VAR__/components/ui"
+    ]
+  }
+}
