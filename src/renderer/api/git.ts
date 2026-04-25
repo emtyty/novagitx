@@ -76,6 +76,11 @@ declare global {
       readGitattributes: (repoPath: string) => Promise<string>
       writeGitattributes: (repoPath: string, content: string) => Promise<void>
     }
+    theme: {
+      getTheme: () => Promise<{ shouldUseDarkColors: boolean; themeSource: 'system' | 'light' | 'dark' }>
+      setThemeSource: (source: 'system' | 'light' | 'dark') => Promise<void>
+      onThemeChanged: (cb: (dark: boolean) => void) => () => void
+    }
   }
 }
 

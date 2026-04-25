@@ -1,12 +1,35 @@
+import { createContext, useContext } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { Toaster } from '@/components/ui/toaster'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useRepoStore } from '@/store/repoStore'
+import { useTheme, type ThemeMode } from '@/hooks/useTheme'
 import Welcome from './pages/Welcome'
 import Repository from './pages/Repository'
 
 const queryClient = new QueryClient()
+
+interface ThemeContextValue {
+  mode: ThemeMode
+  isDark: boolean
+  setMode: (m: ThemeMode) => void
+}
+
+export const ThemeContext = createContext<ThemeContextValue>({
+  mode: 'system',
+  isDark: false,
+  setMode: () => {},
+})
+
+export function useThemeContext() {
+  return useContext(ThemeContext)
+}
+
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const theme = useTheme()
+  return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
+}
 
 function AppContent() {
   const { repoInfo } = useRepoStore()
@@ -15,11 +38,13 @@ function AppContent() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AppContent />
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AppContent />
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 )
 

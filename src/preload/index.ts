@@ -1,5 +1,18 @@
 import { contextBridge, ipcRenderer } from 'electron/renderer'
 import { CHANNELS } from '../main/ipc/channels.js'
+
+const themeApi = {
+  getTheme: (): Promise<{ shouldUseDarkColors: boolean; themeSource: 'system' | 'light' | 'dark' }> =>
+    ipcRenderer.invoke(CHANNELS.THEME_GET),
+  setThemeSource: (source: 'system' | 'light' | 'dark'): Promise<void> =>
+    ipcRenderer.invoke(CHANNELS.THEME_SET, source),
+  onThemeChanged: (cb: (dark: boolean) => void) => {
+    const listener = (_: Electron.IpcRendererEvent, payload: { shouldUseDarkColors: boolean }) =>
+      cb(payload.shouldUseDarkColors)
+    ipcRenderer.on(CHANNELS.THEME_CHANGED, listener)
+    return () => ipcRenderer.removeListener(CHANNELS.THEME_CHANGED, listener)
+  },
+}
 import type { LogOptions, BlameLine, ReflogEntry, Remote, ConflictFile, StashEntry, Submodule, CleanEntry, RebaseCommit } from '../main/git/types.js'
 
 const gitApi = {
@@ -193,5 +206,7 @@ const gitApi = {
 }
 
 contextBridge.exposeInMainWorld('git', gitApi)
+contextBridge.exposeInMainWorld('theme', themeApi)
 
 export type GitApi = typeof gitApi
+export type ThemeApi = typeof themeApi

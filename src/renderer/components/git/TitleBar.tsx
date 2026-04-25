@@ -1,10 +1,12 @@
-import { Search, GitBranch, GitMerge, GitPullRequest, ArrowDownToLine, ArrowUpFromLine, RotateCw, Plus, Settings2 } from 'lucide-react'
+import { Search, GitBranch, GitMerge, GitPullRequest, ArrowDownToLine, ArrowUpFromLine, RotateCw, Plus, Settings2, Sun, Moon, Monitor } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useThemeContext } from '@/App'
+import type { ThemeMode } from '@/hooks/useTheme'
 
 interface TitleBarProps {
   repoName: string
@@ -88,9 +90,29 @@ export function TitleBar({
             <DropdownMenuItem onClick={onInitRepo}>New repository…</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <ThemeToggle />
         <ToolbarButton icon={Settings2} label="" />
       </div>
     </div>
+  )
+}
+
+const THEME_CYCLE: ThemeMode[] = ['light', 'dark', 'system']
+const THEME_ICONS: Record<ThemeMode, typeof Sun> = { light: Sun, dark: Moon, system: Monitor }
+const THEME_LABELS: Record<ThemeMode, string> = { light: 'Light', dark: 'Dark', system: 'System' }
+
+function ThemeToggle() {
+  const { mode, setMode } = useThemeContext()
+  const Icon = THEME_ICONS[mode]
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(mode) + 1) % THEME_CYCLE.length]
+  return (
+    <button
+      onClick={() => setMode(next)}
+      title={`Theme: ${THEME_LABELS[mode]} — click for ${THEME_LABELS[next]}`}
+      className="relative flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-foreground/80 hover:bg-background/70 active:bg-background transition-colors"
+    >
+      <Icon className="size-3.5" />
+    </button>
   )
 }
 

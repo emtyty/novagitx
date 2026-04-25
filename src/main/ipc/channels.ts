@@ -100,4 +100,9 @@ export const CHANNELS = {
   REPO_ADD_GITIGNORE:       'git:repo:add-gitignore',
   REPO_READ_GITATTRIBUTES:  'git:repo:read-gitattributes',
   REPO_WRITE_GITATTRIBUTES: 'git:repo:write-gitattributes',
+
+  // Theme
+  THEME_GET:     'app:theme:get',
+  THEME_SET:     'app:theme:set',
+  THEME_CHANGED: 'app:theme:changed',
 } as const

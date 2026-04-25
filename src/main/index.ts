@@ -2,8 +2,9 @@ import * as electronMain from 'electron/main'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
 import { registerHandlers } from './ipc/handlers.js'
+import { CHANNELS } from './ipc/channels.js'
 
-const { app, BrowserWindow, shell } = electronMain
+const { app, BrowserWindow, shell, nativeTheme } = electronMain
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -48,6 +49,14 @@ function createWindow(): void {
 app.whenReady().then(() => {
   registerHandlers()
   createWindow()
+
+  nativeTheme.on('updated', () => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(CHANNELS.THEME_CHANGED, {
+        shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
+      })
+    }
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

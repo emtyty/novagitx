@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron/main'
+import { ipcMain, dialog, nativeTheme } from 'electron/main'
 import { CHANNELS } from './channels.js'
 import { GitModule } from '../git/GitModule.js'
 import type { LogOptions, RebaseCommit } from '../git/types.js'
@@ -361,5 +361,16 @@ export function registerHandlers(): void {
 
   ipcMain.handle(CHANNELS.REPO_WRITE_GITATTRIBUTES, async (_, repoPath: string, content: string) => {
     await getModule(repoPath).writeGitattributes(content)
+  })
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.THEME_GET, () => ({
+    shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
+    themeSource: nativeTheme.themeSource,
+  }))
+
+  ipcMain.handle(CHANNELS.THEME_SET, (_, source: 'system' | 'light' | 'dark') => {
+    nativeTheme.themeSource = source
   })
 }
