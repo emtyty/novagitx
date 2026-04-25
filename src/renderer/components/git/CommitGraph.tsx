@@ -49,6 +49,8 @@ interface CommitGraphProps {
 const COL_AUTHOR = 180
 const COL_DATE   = 80
 const COL_HASH   = 110
+const MSG_MIN_W  = 160
+const MSG_W_KEY  = 'novagitx-msg-col-width'
 
 export function CommitGraph({
   commits,
@@ -65,21 +67,36 @@ export function CommitGraph({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [viewportH, setViewportH] = useState(600)
+  const [containerW, setContainerW] = useState(0)
+  const [userMsgW, setUserMsgW] = useState<number | null>(() => {
+    const v = localStorage.getItem(MSG_W_KEY)
+    const n = v ? parseInt(v, 10) : NaN
+    return Number.isFinite(n) ? n : null
+  })
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null)
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     setViewportH(el.clientHeight)
+    setContainerW(el.clientWidth)
     const onScroll = () => {
       // flushSync keeps the virtual window in sync with scrollTop on every event —
       // React 18 concurrent mode otherwise defers scroll updates and paints blank rows.
       flushSync(() => setScrollTop(el.scrollTop))
     }
-    const ro = new ResizeObserver(() => setViewportH(el.clientHeight))
+    const ro = new ResizeObserver(() => {
+      setViewportH(el.clientHeight)
+      setContainerW(el.clientWidth)
+    })
     el.addEventListener('scroll', onScroll, { passive: true })
     ro.observe(el)
     return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
   }, [])
+
+  useEffect(() => {
+    if (userMsgW != null) localStorage.setItem(MSG_W_KEY, String(userMsgW))
+  }, [userMsgW])
 
   useEffect(() => {
     if (!selectedId) return
@@ -104,6 +121,36 @@ export function CommitGraph({
 
   const maxLanes = commits.reduce((m, c) => Math.max(m, c.lanes.length), 1)
   const graphW = LEFT_PAD + maxLanes * LANE_W + 8
+  // Derive message column width from measured container — never rely on CSS flex
+  // inside absolutely-positioned rows, which Chromium can misresolve on first paint.
+  const naturalMsgW = Math.max(MSG_MIN_W, containerW - graphW - COL_AUTHOR - COL_DATE - COL_HASH)
+  const msgW = userMsgW != null ? Math.max(MSG_MIN_W, userMsgW) : naturalMsgW
+
+  function onResizeStart(e: React.MouseEvent) {
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startW: msgW }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      const next = dragRef.current.startW + (ev.clientX - dragRef.current.startX)
+      setUserMsgW(Math.max(MSG_MIN_W, Math.round(next)))
+    }
+    const onUp = () => {
+      dragRef.current = null
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
+  function onResizeDoubleClick() {
+    setUserMsgW(null)
+    localStorage.removeItem(MSG_W_KEY)
+  }
 
   const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN)
   const visibleCount = Math.ceil(viewportH / ROW_H) + OVERSCAN * 2
@@ -111,27 +158,39 @@ export function CommitGraph({
   const offsetY = startIdx * ROW_H
   const totalH = commits.length * ROW_H
   const visibleCommits = commits.slice(startIdx, endIdx)
+  const totalRowW = msgW + graphW + COL_AUTHOR + COL_DATE + COL_HASH
 
   return (
-    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-mac">
-      {/* Sticky column headers */}
-      <div className="sticky top-0 z-10 bg-window/95 backdrop-blur border-b border-border flex items-center text-[10.5px] uppercase tracking-wider text-muted-foreground select-none">
-        <div className="font-semibold px-2 py-2 shrink-0" style={{ width: graphW + 380 }}>Graph &amp; Message</div>
+    <div ref={scrollRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-auto scrollbar-mac">
+      {/* Sticky column headers — widths mirror row layout exactly */}
+      <div
+        className="sticky top-0 z-10 bg-window/95 backdrop-blur border-b border-border flex items-center text-[10.5px] uppercase tracking-wider text-muted-foreground select-none"
+        style={{ width: totalRowW }}
+      >
+        <div className="relative font-semibold px-2 py-2 shrink-0" style={{ width: msgW + graphW }}>
+          Graph &amp; Message
+          <div
+            onMouseDown={onResizeStart}
+            onDoubleClick={onResizeDoubleClick}
+            title="Drag to resize · double-click to reset"
+            className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary/70 transition-colors z-20"
+          />
+        </div>
         <div className="font-semibold px-2 py-2 shrink-0" style={{ width: COL_AUTHOR }}>Author</div>
         <div className="font-semibold px-2 py-2 shrink-0" style={{ width: COL_DATE }}>Date</div>
         <div className="font-semibold px-2 py-2 shrink-0" style={{ width: COL_HASH }}>Hash</div>
       </div>
 
-      {/* Fixed-height container establishes exact total scroll height.
-          No spacer rows — browsers can collapse empty <tr> elements. */}
-      <div style={{ height: totalH, position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${offsetY}px)` }}>
+      {/* Fixed-height container establishes exact total scroll height. */}
+      <div style={{ height: totalH, position: 'relative', width: totalRowW }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: totalRowW, transform: `translateY(${offsetY}px)` }}>
           {visibleCommits.map((c, i) => (
             <CommitRow
               key={c.objectId}
               commit={c}
               next={commits[startIdx + i + 1]}
               graphW={graphW}
+              msgW={msgW}
               isSel={c.objectId === selectedId}
               onSelect={onSelect}
               onCheckoutRevision={onCheckoutRevision}
@@ -152,6 +211,7 @@ interface RowProps {
   commit: GitRevision
   next?: GitRevision
   graphW: number
+  msgW: number
   isSel: boolean
   onSelect: (c: GitRevision) => void
   onCheckoutRevision?: (hash: string) => void
@@ -166,6 +226,7 @@ const CommitRow = memo(function CommitRow({
   commit: c,
   next,
   graphW,
+  msgW,
   isSel,
   onSelect,
   onCheckoutRevision,
@@ -183,7 +244,7 @@ const CommitRow = memo(function CommitRow({
           style={{ height: ROW_H }}
           className={`flex items-center cursor-pointer transition-colors border-b border-border/30 ${isSel ? 'bg-primary/10' : 'hover:bg-muted/60'}`}
         >
-          <div className="flex items-center shrink-0 overflow-hidden" style={{ width: graphW + 380 }}>
+          <div className="flex items-center overflow-hidden shrink-0" style={{ width: graphW + msgW }}>
             <GraphCell commit={c} next={next} graphW={graphW} />
             <Refs refs={c.refs} />
             <span className="truncate text-[12px] text-foreground/90 pr-2">{c.subject}</span>
