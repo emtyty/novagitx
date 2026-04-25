@@ -1,4 +1,5 @@
-import type { GitRevision } from '@/types/git'
+import { useRef, useState, useEffect, memo } from 'react'
+import type { GitRevision, GitRef } from '@/types/git'
 import { hashColor, initials } from '@/types/git'
 import {
   ContextMenu,
@@ -12,9 +13,10 @@ import {
 } from '@/components/ui/context-menu'
 import { GitBranch, Tag, RotateCcw, SkipForward, RefreshCw, Copy, GitCommit } from 'lucide-react'
 
-const ROW_H = 36
+const ROW_H = 40
 const LANE_W = 16
 const LEFT_PAD = 14
+const OVERSCAN = 8
 
 const laneColor = (lane: number) => `hsl(var(--graph-${(lane % 6) + 1}))`
 
@@ -53,6 +55,22 @@ export function CommitGraph({
   onResetTo,
   onCheckoutRevision,
 }: CommitGraphProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrollTop, setScrollTop] = useState(0)
+  const [viewportH, setViewportH] = useState(600)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setViewportH(el.clientHeight)
+    const onScroll = () => setScrollTop(el.scrollTop)
+    const onResize = () => setViewportH(el.clientHeight)
+    el.addEventListener('scroll', onScroll, { passive: true })
+    const ro = new ResizeObserver(onResize)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
+  }, [])
+
   if (isLoading) {
     return (
       <div className="flex-1 min-h-0 flex items-center justify-center text-muted-foreground text-[13px]">
@@ -61,11 +79,22 @@ export function CommitGraph({
     )
   }
 
-  const maxLanes = commits.length ? Math.max(...commits.map((c) => c.lanes.length)) : 1
+  // Safe max-lanes that won't overflow the call stack
+  const maxLanes = commits.reduce((m, c) => Math.max(m, c.lanes.length), 1)
   const graphW = LEFT_PAD + maxLanes * LANE_W + 8
+  const totalH = commits.length * ROW_H
+
+  // Virtual window
+  const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN)
+  const visibleCount = Math.ceil(viewportH / ROW_H) + OVERSCAN * 2
+  const endIdx = Math.min(commits.length, startIdx + visibleCount)
+  const paddingTop = startIdx * ROW_H
+  const paddingBottom = Math.max(0, (commits.length - endIdx) * ROW_H)
+
+  const visibleCommits = commits.slice(startIdx, endIdx)
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-mac">
+    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-mac">
       <table className="w-full text-[12px]">
         <thead className="sticky top-0 z-10 bg-window/95 backdrop-blur border-b border-border">
           <tr className="text-left text-[10.5px] uppercase tracking-wider text-muted-foreground">
@@ -78,103 +107,190 @@ export function CommitGraph({
           </tr>
         </thead>
         <tbody>
-          {commits.map((c, i) => {
-            const next = commits[i + 1]
+          {/* top spacer */}
+          {paddingTop > 0 && <tr style={{ height: paddingTop }}><td colSpan={4} /></tr>}
+
+          {visibleCommits.map((c, i) => {
+            const realIdx = startIdx + i
+            const next = commits[realIdx + 1]
             const isSel = c.objectId === selectedId
             return (
-              <ContextMenu key={c.objectId}>
-                <ContextMenuTrigger asChild>
-                  <tr
-                    onClick={() => onSelect(c)}
-                    className={`group cursor-pointer transition-colors ${
-                      isSel ? 'bg-primary/10' : 'hover:bg-muted/60'
-                    }`}
-                  >
-                    <td className="p-0 align-middle">
-                      <div className="flex items-center">
-                        <GraphCell commit={c} next={next} graphW={graphW} />
-                        <Refs commit={c} />
-                        <Message commit={c} />
-                      </div>
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <Author commit={c} />
-                    </td>
-                    <td className="px-2 py-1.5 text-muted-foreground font-mono text-[11px]">
-                      {relativeTime(c.authorUnixTime)}
-                    </td>
-                    <td className="px-2 py-1.5 text-muted-foreground/80 font-mono text-[11px]">
-                      {c.objectId.slice(0, 8)}
-                    </td>
-                  </tr>
-                </ContextMenuTrigger>
-                <ContextMenuContent className="w-52">
-                  <ContextMenuItem onClick={() => navigator.clipboard.writeText(c.objectId)}>
-                    <Copy className="size-3.5 mr-2" />
-                    Copy hash
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => onCheckoutRevision?.(c.objectId)}>
-                    <GitCommit className="size-3.5 mr-2" />
-                    Checkout (detach HEAD)
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => onCreateBranchFrom?.(c.objectId)}>
-                    <GitBranch className="size-3.5 mr-2" />
-                    New branch from here
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => onCreateTagAt?.(c.objectId)}>
-                    <Tag className="size-3.5 mr-2" />
-                    Create tag here
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => onCherryPick?.(c.objectId)}>
-                    <SkipForward className="size-3.5 mr-2" />
-                    Cherry-pick
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => onRevert?.(c.objectId)}>
-                    <RotateCcw className="size-3.5 mr-2" />
-                    Revert commit
-                  </ContextMenuItem>
-                  <ContextMenuSub>
-                    <ContextMenuSubTrigger>
-                      <RefreshCw className="size-3.5 mr-2" />
-                      Reset to here
-                    </ContextMenuSubTrigger>
-                    <ContextMenuSubContent>
-                      <ContextMenuItem onClick={() => onResetTo?.(c.objectId, 'soft')}>
-                        Soft — keep staged
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => onResetTo?.(c.objectId, 'mixed')}>
-                        Mixed — keep unstaged
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        onClick={() => onResetTo?.(c.objectId, 'hard')}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        Hard — discard all changes
-                      </ContextMenuItem>
-                    </ContextMenuSubContent>
-                  </ContextMenuSub>
-                </ContextMenuContent>
-              </ContextMenu>
+              <CommitRow
+                key={c.objectId}
+                commit={c}
+                next={next}
+                graphW={graphW}
+                isSel={isSel}
+                onSelect={onSelect}
+                onCheckoutRevision={onCheckoutRevision}
+                onCreateBranchFrom={onCreateBranchFrom}
+                onCreateTagAt={onCreateTagAt}
+                onCherryPick={onCherryPick}
+                onRevert={onRevert}
+                onResetTo={onResetTo}
+              />
             )
           })}
+
+          {/* bottom spacer */}
+          {paddingBottom > 0 && <tr style={{ height: paddingBottom }}><td colSpan={4} /></tr>}
         </tbody>
       </table>
+      {/* ensure scrollbar track fills full height */}
+      <div style={{ height: totalH, marginTop: -totalH, pointerEvents: 'none' }} />
     </div>
   )
 }
 
-function GraphCell({ commit, next, graphW }: { commit: GitRevision; next?: GitRevision; graphW: number }) {
+interface RowProps {
+  commit: GitRevision
+  next?: GitRevision
+  graphW: number
+  isSel: boolean
+  onSelect: (c: GitRevision) => void
+  onCheckoutRevision?: (hash: string) => void
+  onCreateBranchFrom?: (hash: string) => void
+  onCreateTagAt?: (hash: string) => void
+  onCherryPick?: (hash: string) => void
+  onRevert?: (hash: string) => void
+  onResetTo?: (hash: string, mode: 'soft' | 'mixed' | 'hard') => void
+}
+
+const CommitRow = memo(function CommitRow({
+  commit: c,
+  next,
+  graphW,
+  isSel,
+  onSelect,
+  onCheckoutRevision,
+  onCreateBranchFrom,
+  onCreateTagAt,
+  onCherryPick,
+  onRevert,
+  onResetTo,
+}: RowProps) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <tr
+          onClick={() => onSelect(c)}
+          className={`group cursor-pointer transition-colors ${isSel ? 'bg-primary/10' : 'hover:bg-muted/60'}`}
+        >
+          <td className="p-0 align-middle">
+            <div className="flex items-center">
+              <GraphCell commit={c} next={next} graphW={graphW} />
+              <Refs refs={c.refs} />
+              <span className="truncate text-foreground/90">{c.subject}</span>
+            </div>
+          </td>
+          <td className="px-2 py-1.5">
+            <Author author={c.author} />
+          </td>
+          <td className="px-2 py-1.5 text-muted-foreground font-mono text-[11px]">
+            {relativeTime(c.authorUnixTime)}
+          </td>
+          <td className="px-2 py-1.5 text-muted-foreground/80 font-mono text-[11px]">
+            {c.objectId.slice(0, 8)}
+          </td>
+        </tr>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52">
+        <ContextMenuItem onClick={() => navigator.clipboard.writeText(c.objectId)}>
+          <Copy className="size-3.5 mr-2" />
+          Copy hash
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onCheckoutRevision?.(c.objectId)}>
+          <GitCommit className="size-3.5 mr-2" />
+          Checkout (detach HEAD)
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onCreateBranchFrom?.(c.objectId)}>
+          <GitBranch className="size-3.5 mr-2" />
+          New branch from here
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onCreateTagAt?.(c.objectId)}>
+          <Tag className="size-3.5 mr-2" />
+          Create tag here
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onCherryPick?.(c.objectId)}>
+          <SkipForward className="size-3.5 mr-2" />
+          Cherry-pick
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onRevert?.(c.objectId)}>
+          <RotateCcw className="size-3.5 mr-2" />
+          Revert commit
+        </ContextMenuItem>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <RefreshCw className="size-3.5 mr-2" />
+            Reset to here
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={() => onResetTo?.(c.objectId, 'soft')}>Soft — keep staged</ContextMenuItem>
+            <ContextMenuItem onClick={() => onResetTo?.(c.objectId, 'mixed')}>Mixed — keep unstaged</ContextMenuItem>
+            <ContextMenuItem onClick={() => onResetTo?.(c.objectId, 'hard')} className="text-destructive focus:text-destructive">
+              Hard — discard all changes
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+})
+
+const REF_STYLES: Record<string, string> = {
+  isHead:  'bg-graph-2/15 text-[hsl(var(--graph-2))] border-graph-2/40',
+  head:    'bg-primary/15 text-primary border-primary/40',
+  remote:  'bg-graph-3/15 text-[hsl(var(--graph-3))] border-graph-3/40',
+  tag:     'bg-graph-4/15 text-[hsl(var(--graph-4))] border-graph-4/40',
+}
+
+const Refs = memo(function Refs({ refs }: { refs: GitRef[] | undefined }) {
+  if (!refs?.length) return null
+  return (
+    <div className="flex items-center gap-1 mr-2 shrink-0">
+      {refs.map((r) => {
+        const styleKey = r.isHead ? 'isHead' : r.type
+        return (
+          <span
+            key={r.completeName}
+            className={`inline-flex items-center px-1.5 py-px rounded-[5px] border text-[10.5px] font-medium font-mono ${REF_STYLES[styleKey] ?? REF_STYLES.tag}`}
+          >
+            {r.name}
+          </span>
+        )
+      })}
+    </div>
+  )
+})
+
+const Author = memo(function Author({ author }: { author: string }) {
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <span
+        className="size-5 shrink-0 rounded-full flex items-center justify-center text-[9.5px] font-bold text-white"
+        style={{ background: hashColor(author) }}
+      >
+        {initials(author)}
+      </span>
+      <span className="truncate text-[11.5px] text-foreground/85">{author}</span>
+    </div>
+  )
+})
+
+const GraphCell = memo(function GraphCell({ commit, next, graphW }: { commit: GitRevision; next?: GitRevision; graphW: number }) {
   const cy = ROW_H / 2
   const dotX = LEFT_PAD + commit.branchLane * LANE_W
+  const nextLanes = next ? new Set(next.lanes) : null
+  const commitLanes = new Set(commit.lanes)
 
   return (
     <svg width={graphW} height={ROW_H} className="shrink-0">
       {commit.lanes.map((lane) => {
         const x = LEFT_PAD + lane * LANE_W
-        const goesDown = next?.lanes.includes(lane)
+        const goesDown = nextLanes?.has(lane) ?? false
         return (
           <g key={lane}>
             <line x1={x} y1={0} x2={x} y2={cy} stroke={laneColor(lane)} strokeWidth={1.75} opacity={0.85} />
@@ -184,9 +300,9 @@ function GraphCell({ commit, next, graphW }: { commit: GitRevision; next?: GitRe
           </g>
         )
       })}
-      {next &&
-        next.lanes
-          .filter((l) => !commit.lanes.includes(l))
+      {nextLanes &&
+        [...nextLanes]
+          .filter((l) => !commitLanes.has(l))
           .map((l) => {
             const x2 = LEFT_PAD + l * LANE_W
             return (
@@ -203,47 +319,4 @@ function GraphCell({ commit, next, graphW }: { commit: GitRevision; next?: GitRe
       <circle cx={dotX} cy={cy} r={4.5} fill={laneColor(commit.branchLane)} stroke="hsl(var(--window))" strokeWidth={2} />
     </svg>
   )
-}
-
-function Refs({ commit }: { commit: GitRevision }) {
-  if (!commit.refs?.length) return null
-  return (
-    <div className="flex items-center gap-1 mr-2 shrink-0">
-      {commit.refs.map((r) => {
-        const styles = r.isHead
-          ? 'bg-graph-2/15 text-[hsl(var(--graph-2))] border-graph-2/40'
-          : r.type === 'head'
-          ? 'bg-primary/15 text-primary border-primary/40'
-          : r.type === 'remote'
-          ? 'bg-graph-3/15 text-[hsl(var(--graph-3))] border-graph-3/40'
-          : 'bg-graph-4/15 text-[hsl(var(--graph-4))] border-graph-4/40'
-        return (
-          <span
-            key={r.completeName}
-            className={`inline-flex items-center px-1.5 py-px rounded-[5px] border text-[10.5px] font-medium font-mono ${styles}`}
-          >
-            {r.name}
-          </span>
-        )
-      })}
-    </div>
-  )
-}
-
-function Message({ commit }: { commit: GitRevision }) {
-  return <span className="truncate text-foreground/90">{commit.subject}</span>
-}
-
-function Author({ commit }: { commit: GitRevision }) {
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      <span
-        className="size-5 shrink-0 rounded-full flex items-center justify-center text-[9.5px] font-bold text-white"
-        style={{ background: hashColor(commit.author) }}
-      >
-        {initials(commit.author)}
-      </span>
-      <span className="truncate text-[11.5px] text-foreground/85">{commit.author}</span>
-    </div>
-  )
-}
+})

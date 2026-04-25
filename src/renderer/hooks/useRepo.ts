@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { gitApi } from '@/api/git'
 import type { LogOptions } from '@/types/git'
-// LogOptions re-exported for use in hook signatures
+
+type QueryKey = 'log' | 'refs' | 'status' | 'stashList' | 'remotes' | 'submodules' | 'conflicts' | 'diff:working' | 'diff:staged'
+
+function useInvalidate(repoPath: string | null, keys: QueryKey[]) {
+  const qc = useQueryClient()
+  return () => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k, repoPath] }))
+}
 
 export function useLog(repoPath: string | null, opts?: LogOptions) {
   return useQuery({
@@ -49,12 +55,7 @@ export function useFileDiff(repoPath: string | null, commitHash: string | null, 
 }
 
 export function useBranchMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'refs', 'status'])
 
   const checkout = useMutation({
     mutationFn: (branchName: string) => gitApi.checkoutBranch(repoPath!, branchName),
@@ -83,11 +84,7 @@ export function useBranchMutations(repoPath: string | null) {
 }
 
 export function useRemoteMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'refs'])
 
   const fetch = useMutation({
     mutationFn: (remote?: string) => gitApi.fetch(repoPath!, remote),
@@ -110,20 +107,17 @@ export function useRemoteMutations(repoPath: string | null) {
 }
 
 export function useCommitMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'status'])
+  const invalidateStatus = useInvalidate(repoPath, ['status'])
 
   const stage = useMutation({
     mutationFn: (filePath: string) => gitApi.stageFile(repoPath!, filePath),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['status', repoPath] }),
+    onSuccess: invalidateStatus,
   })
 
   const unstage = useMutation({
     mutationFn: (filePath: string) => gitApi.unstageFile(repoPath!, filePath),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['status', repoPath] }),
+    onSuccess: invalidateStatus,
   })
 
   const commit = useMutation({
@@ -155,13 +149,7 @@ export function useStagedDiff(repoPath: string | null, filePath?: string | null)
 }
 
 export function useCommitMutationsExtra(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-    qc.invalidateQueries({ queryKey: ['diff:working', repoPath] })
-    qc.invalidateQueries({ queryKey: ['diff:staged', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'status', 'diff:working', 'diff:staged'])
 
   const discard = useMutation({
     mutationFn: (filePath: string) => gitApi.discardFile(repoPath!, filePath),
@@ -177,12 +165,7 @@ export function useCommitMutationsExtra(repoPath: string | null) {
 }
 
 export function useCommitGraphMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'refs', 'status'])
 
   const revert = useMutation({
     mutationFn: (hash: string) => gitApi.revertCommit(repoPath!, hash),
@@ -204,12 +187,7 @@ export function useCommitGraphMutations(repoPath: string | null) {
 }
 
 export function useBranchMerge(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'refs', 'status'])
 
   return useMutation({
     mutationFn: ({ branch, strategy }: { branch: string; strategy?: string }) =>
@@ -219,8 +197,7 @@ export function useBranchMerge(repoPath: string | null) {
 }
 
 export function useTagMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidateRefs = () => qc.invalidateQueries({ queryKey: ['refs', repoPath] })
+  const invalidateRefs = useInvalidate(repoPath, ['refs'])
 
   const create = useMutation({
     mutationFn: ({ name, hash, message }: { name: string; hash?: string; message?: string }) =>
@@ -278,12 +255,7 @@ export function useRemotes(repoPath: string | null) {
 }
 
 export function useRemoteMutationsCRUD(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['remotes', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['remotes', 'refs', 'log'])
 
   const add = useMutation({
     mutationFn: ({ name, url }: { name: string; url: string }) => gitApi.addRemote(repoPath!, name, url),
@@ -310,12 +282,7 @@ export function useRemoteMutationsCRUD(repoPath: string | null) {
 }
 
 export function useRebaseMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'refs', 'status'])
 
   const rebase = useMutation({
     mutationFn: (onto: string) => gitApi.rebase(repoPath!, onto),
@@ -341,13 +308,7 @@ export function useConflicts(repoPath: string | null) {
 }
 
 export function useConflictMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['conflicts', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-    qc.invalidateQueries({ queryKey: ['diff:working', repoPath] })
-    qc.invalidateQueries({ queryKey: ['diff:staged', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['conflicts', 'status', 'diff:working', 'diff:staged'])
 
   return useMutation({
     mutationFn: ({ filePath, strategy }: { filePath: string; strategy: 'ours' | 'theirs' }) =>
@@ -357,12 +318,7 @@ export function useConflictMutations(repoPath: string | null) {
 }
 
 export function useHunkMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-    qc.invalidateQueries({ queryKey: ['diff:working', repoPath] })
-    qc.invalidateQueries({ queryKey: ['diff:staged', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['status', 'diff:working', 'diff:staged'])
 
   const stageHunk = useMutation({
     mutationFn: (patch: string) => gitApi.stageHunk(repoPath!, patch),
@@ -378,12 +334,7 @@ export function useHunkMutations(repoPath: string | null) {
 }
 
 export function useStashMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-  }
+  const invalidateAll = useInvalidate(repoPath, ['log', 'refs', 'status'])
 
   const save = useMutation({
     mutationFn: (message?: string) => gitApi.stashSave(repoPath!, message),
@@ -425,13 +376,7 @@ export function useStashDiff(repoPath: string | null, ref: string | null) {
 }
 
 export function useStashExtras(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-    qc.invalidateQueries({ queryKey: ['stashList', repoPath] })
-  }
+  const invalidateAll = useInvalidate(repoPath, ['log', 'refs', 'status', 'stashList'])
 
   const pop = useMutation({
     mutationFn: (ref?: string) => gitApi.stashPop(repoPath!, ref),
@@ -457,12 +402,7 @@ export function useCompareDiff(repoPath: string | null, ref1: string | null, ref
 }
 
 export function useBranchExtras(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-    qc.invalidateQueries({ queryKey: ['status', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'refs', 'status'])
 
   const setUpstream = useMutation({
     mutationFn: ({ branch, upstream }: { branch: string; upstream: string }) =>
@@ -494,11 +434,7 @@ export function useRebaseCommits(repoPath: string | null, base: string | null) {
 }
 
 export function useInteractiveRebaseMutation(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['log', repoPath] })
-    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
-  }
+  const invalidate = useInvalidate(repoPath, ['log', 'refs'])
 
   return useMutation({
     mutationFn: ({ base, commits }: { base: string; commits: import('@/types/git').RebaseCommit[] }) =>
@@ -531,8 +467,7 @@ export function useSubmodules(repoPath: string | null) {
 }
 
 export function useSubmoduleMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['submodules', repoPath] })
+  const invalidate = useInvalidate(repoPath, ['submodules'])
 
   const add = useMutation({
     mutationFn: ({ url, path }: { url: string; path: string }) =>
@@ -564,10 +499,11 @@ export function useCleanDryRun(repoPath: string | null, enabled: boolean) {
 
 export function useCleanMutation(repoPath: string | null) {
   const qc = useQueryClient()
+  const invalidate = useInvalidate(repoPath, ['status'])
   return useMutation({
     mutationFn: () => gitApi.clean(repoPath!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['status', repoPath] })
+      invalidate()
       qc.invalidateQueries({ queryKey: ['cleanDryRun', repoPath] })
     },
   })
@@ -592,8 +528,7 @@ export function useGitattributes(repoPath: string | null) {
 }
 
 export function useGitignoreMutations(repoPath: string | null) {
-  const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['gitignore', repoPath] })
+  const invalidate = useInvalidate(repoPath, ['gitignore'])
 
   const write = useMutation({
     mutationFn: (content: string) => gitApi.writeGitignore(repoPath!, content),
@@ -609,9 +544,9 @@ export function useGitignoreMutations(repoPath: string | null) {
 }
 
 export function useGitattributesMutations(repoPath: string | null) {
-  const qc = useQueryClient()
+  const invalidate = useInvalidate(repoPath, ['gitattributes'])
   return useMutation({
     mutationFn: (content: string) => gitApi.writeGitattributes(repoPath!, content),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['gitattributes', repoPath] }),
+    onSuccess: invalidate,
   })
 }
