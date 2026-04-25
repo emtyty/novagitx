@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, memo } from 'react'
+import { flushSync } from 'react-dom'
 import type { GitRevision, GitRef } from '@/types/git'
 import { hashColor, initials } from '@/types/git'
 import {
@@ -56,26 +57,23 @@ export function CommitGraph({
   onCheckoutRevision,
 }: CommitGraphProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const viewportHRef = useRef(600)
-  const [, forceUpdate] = useState(0)
+  const [scrollTop, setScrollTop] = useState(0)
+  const [viewportH, setViewportH] = useState(600)
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    viewportHRef.current = el.clientHeight
-    const onScroll = () => forceUpdate((n) => n + 1)
-    const ro = new ResizeObserver(() => {
-      viewportHRef.current = el.clientHeight
-      forceUpdate((n) => n + 1)
-    })
+    setViewportH(el.clientHeight)
+    const onScroll = () => {
+      // flushSync ensures React re-renders synchronously with the scroll event,
+      // preventing blank rows that appear when concurrent mode defers the update.
+      flushSync(() => setScrollTop(el.scrollTop))
+    }
+    const ro = new ResizeObserver(() => setViewportH(el.clientHeight))
     el.addEventListener('scroll', onScroll, { passive: true })
     ro.observe(el)
     return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
   }, [])
-
-  // Read directly from DOM so the window is always in sync with the scroll position
-  const scrollTop = scrollRef.current?.scrollTop ?? 0
-  const viewportH = viewportHRef.current
 
   if (isLoading) {
     return (
