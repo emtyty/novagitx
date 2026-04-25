@@ -34,6 +34,7 @@ interface SidebarProps {
   onShowStaging: () => void
   hasChanges: boolean
   onCheckoutRemote?: (remoteBranch: string) => void
+  onSelectRef?: (objectId: string) => void
   onSetUpstream?: (branch: string) => void
   onPruneRemote?: (remote: string) => void
   onPopStash?: (ref: string) => void
@@ -54,6 +55,7 @@ export function Sidebar({
   onShowStaging,
   hasChanges,
   onCheckoutRemote,
+  onSelectRef,
   onSetUpstream,
   onPruneRemote,
   onPopStash,
@@ -172,6 +174,7 @@ export function Sidebar({
                 <RemoteBranchItem
                   key={b.completeName}
                   branch={b}
+                  onSelect={onSelectRef ? () => onSelectRef(b.objectId) : undefined}
                   onCheckout={onCheckoutRemote ? () => onCheckoutRemote(b.completeName.replace('refs/remotes/', '')) : undefined}
                 />
               ))}
@@ -370,11 +373,14 @@ function Group({ label, children, defaultOpen = false, onPrune }: any) {
   )
 }
 
-function RemoteBranchItem({ branch, onCheckout }: { branch: GitRef; onCheckout?: () => void }) {
+function RemoteBranchItem({ branch, onSelect, onCheckout }: { branch: GitRef; onSelect?: () => void; onCheckout?: () => void }) {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <button className="w-full flex items-center gap-1.5 pl-7 pr-2 py-1 rounded-md text-[12px] transition-colors text-sidebar-foreground hover:bg-sidebar-hover">
+        <button
+          onClick={onSelect}
+          className="w-full flex items-center gap-1.5 pl-7 pr-2 py-1 rounded-md text-[12px] transition-colors text-sidebar-foreground hover:bg-sidebar-hover"
+        >
           <Cloud className="size-3.5 shrink-0 text-sidebar-muted" />
           <span className="truncate">{branch.name}</span>
         </button>

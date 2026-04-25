@@ -200,6 +200,7 @@ export default function Repository() {
             onShowStaging={() => setShowStaging(true)}
             hasChanges={hasChanges}
             onCheckoutRemote={(remoteBranch) => branchExtras.checkoutRemote.mutate({ remoteBranch })}
+            onSelectRef={(objectId) => { setSelectedId(objectId); setShowStaging(false) }}
             onSetUpstream={(branch) => setSetUpstreamBranch(branch)}
             onPruneRemote={(remote) => gitApi.pruneRemote(repoPath!, remote)}
           />

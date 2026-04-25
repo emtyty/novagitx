@@ -81,6 +81,19 @@ export function CommitGraph({
     return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
   }, [])
 
+  useEffect(() => {
+    if (!selectedId) return
+    const idx = commits.findIndex((c) => c.objectId === selectedId)
+    if (idx === -1) return
+    const el = scrollRef.current
+    if (!el) return
+    const commitTop = idx * ROW_H
+    const commitBottom = commitTop + ROW_H
+    if (commitTop < el.scrollTop || commitBottom > el.scrollTop + el.clientHeight) {
+      el.scrollTop = commitTop - el.clientHeight / 2 + ROW_H / 2
+    }
+  }, [selectedId, commits])
+
   if (isLoading) {
     return (
       <div className="flex-1 min-h-0 flex items-center justify-center text-muted-foreground text-[13px]">
