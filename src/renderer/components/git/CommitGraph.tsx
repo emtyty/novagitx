@@ -17,7 +17,7 @@ import { GitBranch, Tag, RotateCcw, SkipForward, RefreshCw, Copy, GitCommit } fr
 const ROW_H = 40
 const LANE_W = 16
 const LEFT_PAD = 14
-const OVERSCAN = 8
+const OVERSCAN = 10
 
 const laneColor = (lane: number) => `hsl(var(--graph-${(lane % 6) + 1}))`
 
@@ -44,6 +44,12 @@ interface CommitGraphProps {
   onCheckoutRevision?: (hash: string) => void
 }
 
+// Column widths — shared between header and rows so they stay aligned.
+// graphW is dynamic (depends on lane count), so it's passed as a prop to rows.
+const COL_AUTHOR = 180
+const COL_DATE   = 80
+const COL_HASH   = 110
+
 export function CommitGraph({
   commits,
   selectedId,
@@ -65,8 +71,8 @@ export function CommitGraph({
     if (!el) return
     setViewportH(el.clientHeight)
     const onScroll = () => {
-      // flushSync ensures React re-renders synchronously with the scroll event,
-      // preventing blank rows that appear when concurrent mode defers the update.
+      // flushSync keeps the virtual window in sync with scrollTop on every event —
+      // React 18 concurrent mode otherwise defers scroll updates and paints blank rows.
       flushSync(() => setScrollTop(el.scrollTop))
     }
     const ro = new ResizeObserver(() => setViewportH(el.clientHeight))
@@ -89,28 +95,24 @@ export function CommitGraph({
   const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN)
   const visibleCount = Math.ceil(viewportH / ROW_H) + OVERSCAN * 2
   const endIdx = Math.min(commits.length, startIdx + visibleCount)
-  const paddingTop = startIdx * ROW_H
-  const paddingBottom = Math.max(0, (commits.length - endIdx) * ROW_H)
+  const offsetY = startIdx * ROW_H
+  const totalH = commits.length * ROW_H
   const visibleCommits = commits.slice(startIdx, endIdx)
 
   return (
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-mac">
-      <table className="w-full text-[12px]">
-        <thead className="sticky top-0 z-10 bg-window/95 backdrop-blur border-b border-border">
-          <tr className="text-left text-[10.5px] uppercase tracking-wider text-muted-foreground">
-            <th className="font-semibold px-2 py-2" style={{ width: graphW + 380 }}>
-              Graph &amp; Message
-            </th>
-            <th className="font-semibold px-2 py-2 w-[180px]">Author</th>
-            <th className="font-semibold px-2 py-2 w-[80px]">Date</th>
-            <th className="font-semibold px-2 py-2 w-[110px]">Hash</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paddingTop > 0 && (
-            <tr aria-hidden><td colSpan={4} style={{ height: paddingTop, padding: 0 }} /></tr>
-          )}
+      {/* Sticky column headers */}
+      <div className="sticky top-0 z-10 bg-window/95 backdrop-blur border-b border-border flex items-center text-[10.5px] uppercase tracking-wider text-muted-foreground select-none">
+        <div className="font-semibold px-2 py-2 shrink-0" style={{ width: graphW + 380 }}>Graph &amp; Message</div>
+        <div className="font-semibold px-2 py-2 shrink-0" style={{ width: COL_AUTHOR }}>Author</div>
+        <div className="font-semibold px-2 py-2 shrink-0" style={{ width: COL_DATE }}>Date</div>
+        <div className="font-semibold px-2 py-2 shrink-0" style={{ width: COL_HASH }}>Hash</div>
+      </div>
 
+      {/* Fixed-height container establishes exact total scroll height.
+          No spacer rows — browsers can collapse empty <tr> elements. */}
+      <div style={{ height: totalH, position: 'relative' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${offsetY}px)` }}>
           {visibleCommits.map((c, i) => (
             <CommitRow
               key={c.objectId}
@@ -127,12 +129,8 @@ export function CommitGraph({
               onResetTo={onResetTo}
             />
           ))}
-
-          {paddingBottom > 0 && (
-            <tr aria-hidden><td colSpan={4} style={{ height: paddingBottom, padding: 0 }} /></tr>
-          )}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   )
 }
@@ -167,27 +165,26 @@ const CommitRow = memo(function CommitRow({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <tr
+        <div
           onClick={() => onSelect(c)}
-          className={`group cursor-pointer transition-colors ${isSel ? 'bg-primary/10' : 'hover:bg-muted/60'}`}
+          style={{ height: ROW_H }}
+          className={`flex items-center cursor-pointer transition-colors border-b border-border/30 ${isSel ? 'bg-primary/10' : 'hover:bg-muted/60'}`}
         >
-          <td className="p-0 align-middle">
-            <div className="flex items-center">
-              <GraphCell commit={c} next={next} graphW={graphW} />
-              <Refs refs={c.refs} />
-              <span className="truncate text-foreground/90">{c.subject}</span>
-            </div>
-          </td>
-          <td className="px-2 py-1.5">
+          <div className="flex items-center shrink-0 overflow-hidden" style={{ width: graphW + 380 }}>
+            <GraphCell commit={c} next={next} graphW={graphW} />
+            <Refs refs={c.refs} />
+            <span className="truncate text-[12px] text-foreground/90 pr-2">{c.subject}</span>
+          </div>
+          <div className="shrink-0 px-2" style={{ width: COL_AUTHOR }}>
             <Author author={c.author} />
-          </td>
-          <td className="px-2 py-1.5 text-muted-foreground font-mono text-[11px]">
+          </div>
+          <div className="shrink-0 px-2 text-muted-foreground font-mono text-[11px]" style={{ width: COL_DATE }}>
             {relativeTime(c.authorUnixTime)}
-          </td>
-          <td className="px-2 py-1.5 text-muted-foreground/80 font-mono text-[11px]">
+          </div>
+          <div className="shrink-0 px-2 text-muted-foreground/80 font-mono text-[11px]" style={{ width: COL_HASH }}>
             {c.objectId.slice(0, 8)}
-          </td>
-        </tr>
+          </div>
+        </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
         <ContextMenuItem onClick={() => navigator.clipboard.writeText(c.objectId)}>
