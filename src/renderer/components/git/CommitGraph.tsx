@@ -111,14 +111,6 @@ export function CommitGraph({
     }
   }, [selectedId, commits])
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 min-h-0 flex items-center justify-center text-muted-foreground text-[13px]">
-        Loading commits…
-      </div>
-    )
-  }
-
   const maxLanes = commits.reduce((m, c) => Math.max(m, c.lanes.length), 1)
   const graphW = LEFT_PAD + maxLanes * LANE_W + 8
   // Derive message column width from measured container — never rely on CSS flex
@@ -182,27 +174,33 @@ export function CommitGraph({
       </div>
 
       {/* Fixed-height container establishes exact total scroll height. */}
-      <div style={{ height: totalH, position: 'relative', width: totalRowW }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, width: totalRowW, transform: `translateY(${offsetY}px)` }}>
-          {visibleCommits.map((c, i) => (
-            <CommitRow
-              key={c.objectId}
-              commit={c}
-              next={commits[startIdx + i + 1]}
-              graphW={graphW}
-              msgW={msgW}
-              isSel={c.objectId === selectedId}
-              onSelect={onSelect}
-              onCheckoutRevision={onCheckoutRevision}
-              onCreateBranchFrom={onCreateBranchFrom}
-              onCreateTagAt={onCreateTagAt}
-              onCherryPick={onCherryPick}
-              onRevert={onRevert}
-              onResetTo={onResetTo}
-            />
-          ))}
+      {isLoading && commits.length === 0 ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground text-[13px]">
+          Loading commits…
         </div>
-      </div>
+      ) : (
+        <div style={{ height: totalH, position: 'relative', width: totalRowW }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: totalRowW, transform: `translateY(${offsetY}px)` }}>
+            {visibleCommits.map((c, i) => (
+              <CommitRow
+                key={c.objectId}
+                commit={c}
+                next={commits[startIdx + i + 1]}
+                graphW={graphW}
+                msgW={msgW}
+                isSel={c.objectId === selectedId}
+                onSelect={onSelect}
+                onCheckoutRevision={onCheckoutRevision}
+                onCreateBranchFrom={onCreateBranchFrom}
+                onCreateTagAt={onCreateTagAt}
+                onCherryPick={onCherryPick}
+                onRevert={onRevert}
+                onResetTo={onResetTo}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
