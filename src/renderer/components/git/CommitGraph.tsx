@@ -56,20 +56,26 @@ export function CommitGraph({
   onCheckoutRevision,
 }: CommitGraphProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrollTop, setScrollTop] = useState(0)
-  const [viewportH, setViewportH] = useState(600)
+  const viewportHRef = useRef(600)
+  const [, forceUpdate] = useState(0)
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    setViewportH(el.clientHeight)
-    const onScroll = () => setScrollTop(el.scrollTop)
-    const onResize = () => setViewportH(el.clientHeight)
+    viewportHRef.current = el.clientHeight
+    const onScroll = () => forceUpdate((n) => n + 1)
+    const ro = new ResizeObserver(() => {
+      viewportHRef.current = el.clientHeight
+      forceUpdate((n) => n + 1)
+    })
     el.addEventListener('scroll', onScroll, { passive: true })
-    const ro = new ResizeObserver(onResize)
     ro.observe(el)
     return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
   }, [])
+
+  // Read directly from DOM so the window is always in sync with the scroll position
+  const scrollTop = scrollRef.current?.scrollTop ?? 0
+  const viewportH = viewportHRef.current
 
   if (isLoading) {
     return (
@@ -79,18 +85,14 @@ export function CommitGraph({
     )
   }
 
-  // Safe max-lanes that won't overflow the call stack
   const maxLanes = commits.reduce((m, c) => Math.max(m, c.lanes.length), 1)
   const graphW = LEFT_PAD + maxLanes * LANE_W + 8
-  const totalH = commits.length * ROW_H
 
-  // Virtual window
   const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN)
   const visibleCount = Math.ceil(viewportH / ROW_H) + OVERSCAN * 2
   const endIdx = Math.min(commits.length, startIdx + visibleCount)
   const paddingTop = startIdx * ROW_H
   const paddingBottom = Math.max(0, (commits.length - endIdx) * ROW_H)
-
   const visibleCommits = commits.slice(startIdx, endIdx)
 
   return (
@@ -107,37 +109,32 @@ export function CommitGraph({
           </tr>
         </thead>
         <tbody>
-          {/* top spacer */}
-          {paddingTop > 0 && <tr style={{ height: paddingTop }}><td colSpan={4} /></tr>}
+          {paddingTop > 0 && (
+            <tr aria-hidden><td colSpan={4} style={{ height: paddingTop, padding: 0 }} /></tr>
+          )}
 
-          {visibleCommits.map((c, i) => {
-            const realIdx = startIdx + i
-            const next = commits[realIdx + 1]
-            const isSel = c.objectId === selectedId
-            return (
-              <CommitRow
-                key={c.objectId}
-                commit={c}
-                next={next}
-                graphW={graphW}
-                isSel={isSel}
-                onSelect={onSelect}
-                onCheckoutRevision={onCheckoutRevision}
-                onCreateBranchFrom={onCreateBranchFrom}
-                onCreateTagAt={onCreateTagAt}
-                onCherryPick={onCherryPick}
-                onRevert={onRevert}
-                onResetTo={onResetTo}
-              />
-            )
-          })}
+          {visibleCommits.map((c, i) => (
+            <CommitRow
+              key={c.objectId}
+              commit={c}
+              next={commits[startIdx + i + 1]}
+              graphW={graphW}
+              isSel={c.objectId === selectedId}
+              onSelect={onSelect}
+              onCheckoutRevision={onCheckoutRevision}
+              onCreateBranchFrom={onCreateBranchFrom}
+              onCreateTagAt={onCreateTagAt}
+              onCherryPick={onCherryPick}
+              onRevert={onRevert}
+              onResetTo={onResetTo}
+            />
+          ))}
 
-          {/* bottom spacer */}
-          {paddingBottom > 0 && <tr style={{ height: paddingBottom }}><td colSpan={4} /></tr>}
+          {paddingBottom > 0 && (
+            <tr aria-hidden><td colSpan={4} style={{ height: paddingBottom, padding: 0 }} /></tr>
+          )}
         </tbody>
       </table>
-      {/* ensure scrollbar track fills full height */}
-      <div style={{ height: totalH, marginTop: -totalH, pointerEvents: 'none' }} />
     </div>
   )
 }
