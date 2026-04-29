@@ -1,27 +1,82 @@
 import * as electronMain from 'electron/main'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
+import { existsSync, statSync } from 'fs'
 import { registerHandlers } from './ipc/handlers.js'
 import { CHANNELS } from './ipc/channels.js'
+import { GitModule } from './git/GitModule.js'
 
 const { app, BrowserWindow, shell, nativeTheme } = electronMain
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const isDev = process.env.NODE_ENV === 'development'
 
 let mainWindow: ReturnType<typeof BrowserWindow.prototype.constructor> | null = null
+let pendingRepoPath: string | null = null
+
+function extractRepoPathFromArgv(argv: string[]): string | null {
+  // Skip the executable; on Windows packaged builds the first arg is the .exe.
+  // The OS context-menu invocation passes the directory as the last positional arg.
+  for (let i = argv.length - 1; i >= 1; i--) {
+    const arg = argv[i]
+    if (!arg || arg.startsWith('-')) continue
+    if (existsSync(arg) && statSync(arg).isDirectory()) return arg
+  }
+  return null
+}
+
+async function openRepoFromOS(repoPath: string): Promise<void> {
+  if (!existsSync(repoPath) || !statSync(repoPath).isDirectory()) return
+  const mod = new GitModule(repoPath)
+  if (!(await mod.isValidRepo())) return
+  const info = await mod.getRepoInfo()
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+    mainWindow.webContents.send(CHANNELS.REPO_OPENED_FROM_OS, info)
+  } else {
+    pendingRepoPath = repoPath
+  }
+}
 
 function createWindow(): void {
+  const isMac = process.platform === 'darwin'
+  const isWin = process.platform === 'win32'
+
+  const platformOpts: Electron.BrowserWindowConstructorOptions = isMac
+    ? {
+        titleBarStyle: 'hidden',
+        trafficLightPosition: { x: 12, y: 14 },
+        vibrancy: 'under-window',
+        visualEffectState: 'active',
+        backgroundColor: '#00000000',
+      }
+    : isWin
+      ? {
+          titleBarStyle: 'hidden',
+          titleBarOverlay: {
+            color: '#00000000',
+            symbolColor: '#888888',
+            height: 44,
+          },
+          backgroundColor: '#1e1e1e',
+        }
+      : {
+          frame: false,
+          backgroundColor: '#1e1e1e',
+        }
+
+  // For mac, .icns embedded in the bundle is used; ignored elsewhere.
+  // For Windows/Linux dev runs the bundled .ico/.png isn't available, so point at resources/icon.png.
+  const iconPath = isMac ? undefined : join(__dirname, '../../resources/icon.png')
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 600,
     show: false,
-    titleBarStyle: 'hidden',
-    trafficLightPosition: { x: 12, y: 14 },
-    vibrancy: 'under-window',
-    visualEffectState: 'active',
-    backgroundColor: '#00000000',
+    ...(iconPath ? { icon: iconPath } : {}),
+    ...platformOpts,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -32,6 +87,11 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow!.show()
+    if (pendingRepoPath) {
+      const path = pendingRepoPath
+      pendingRepoPath = null
+      openRepoFromOS(path)
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }: { url: string }) => {
@@ -46,23 +106,53 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
-  registerHandlers()
-  createWindow()
-
-  nativeTheme.on('updated', () => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(CHANNELS.THEME_CHANGED, {
-        shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
-      })
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  // Windows: a second invocation (e.g. from Explorer context menu) forwards its argv here.
+  app.on('second-instance', (_event: Electron.Event, argv: string[]) => {
+    const repoPath = extractRepoPathFromArgv(argv)
+    if (repoPath) openRepoFromOS(repoPath)
+    else if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
     }
   })
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  // macOS: fired by the Services menu and `open` command with a path.
+  app.on('open-file', (event: Electron.Event, path: string) => {
+    event.preventDefault()
+    if (app.isReady()) openRepoFromOS(path)
+    else pendingRepoPath = path
   })
-})
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+  // Capture argv on initial Windows launch from the context menu.
+  pendingRepoPath = extractRepoPathFromArgv(process.argv)
+
+  app.whenReady().then(() => {
+    registerHandlers()
+    createWindow()
+
+    nativeTheme.on('updated', () => {
+      const dark = nativeTheme.shouldUseDarkColors
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send(CHANNELS.THEME_CHANGED, { shouldUseDarkColors: dark })
+        if (process.platform === 'win32') {
+          win.setTitleBarOverlay?.({
+            color: '#00000000',
+            symbolColor: dark ? '#cccccc' : '#333333',
+          })
+        }
+      }
+    })
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+  })
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit()
+  })
+}

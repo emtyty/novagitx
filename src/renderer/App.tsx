@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { Toaster } from '@/components/ui/toaster'
@@ -32,7 +32,8 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const { repoInfo } = useRepoStore()
+  const { repoInfo, setRepo } = useRepoStore()
+  useEffect(() => window.appOS.onRepoOpenedFromOS(setRepo), [setRepo])
   return repoInfo ? <Repository /> : <Welcome />
 }
 

@@ -105,4 +105,7 @@ export const CHANNELS = {
   THEME_GET:     'app:theme:get',
   THEME_SET:     'app:theme:set',
   THEME_CHANGED: 'app:theme:changed',
+
+  // OS integration (main → renderer push)
+  REPO_OPENED_FROM_OS: 'app:repo:opened-from-os',
 } as const

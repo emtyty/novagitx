@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GitBranch, FolderOpen, Clock, GitMerge, Plus } from 'lucide-react'
+import { FolderOpen, Clock, GitMerge, Plus } from 'lucide-react'
 import { gitApi } from '@/api/git'
 import { useRepoStore } from '@/store/repoStore'
 import { CloneDialog } from '@/components/git/CloneDialog'
@@ -47,12 +47,10 @@ export default function Welcome() {
     <div className="min-h-screen w-full flex items-center justify-center bg-window">
       <div className="flex flex-col items-center gap-8 max-w-[520px] w-full px-8">
         <div className="flex flex-col items-center gap-3">
-          <div className="size-16 rounded-2xl bg-gradient-to-br from-primary to-graph-4 flex items-center justify-center">
-            <GitBranch className="size-8 text-primary-foreground" />
-          </div>
+          <img src="/logo.png" alt="NovaGitX" className="size-20 rounded-2xl shadow-sm" />
           <h1 className="text-[22px] font-semibold text-foreground">NovaGitX</h1>
           <p className="text-[13px] text-muted-foreground text-center">
-            A native macOS Git client. Open, clone, or create a repository.
+            A modern Git client for macOS and Windows. Open, clone, or create a repository.
           </p>
         </div>
 

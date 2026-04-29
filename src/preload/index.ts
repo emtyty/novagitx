@@ -13,7 +13,16 @@ const themeApi = {
     return () => ipcRenderer.removeListener(CHANNELS.THEME_CHANGED, listener)
   },
 }
-import type { LogOptions, BlameLine, ReflogEntry, Remote, ConflictFile, StashEntry, Submodule, CleanEntry, RebaseCommit } from '../main/git/types.js'
+import type { LogOptions, BlameLine, ReflogEntry, Remote, ConflictFile, StashEntry, Submodule, CleanEntry, RebaseCommit, RepoInfo } from '../main/git/types.js'
+
+const appApi = {
+  platform: process.platform as NodeJS.Platform,
+  onRepoOpenedFromOS: (cb: (info: RepoInfo) => void) => {
+    const listener = (_: Electron.IpcRendererEvent, info: RepoInfo) => cb(info)
+    ipcRenderer.on(CHANNELS.REPO_OPENED_FROM_OS, listener)
+    return () => ipcRenderer.removeListener(CHANNELS.REPO_OPENED_FROM_OS, listener)
+  },
+}
 
 const gitApi = {
   // Repo
@@ -207,6 +216,8 @@ const gitApi = {
 
 contextBridge.exposeInMainWorld('git', gitApi)
 contextBridge.exposeInMainWorld('theme', themeApi)
+contextBridge.exposeInMainWorld('appOS', appApi)
 
 export type GitApi = typeof gitApi
 export type ThemeApi = typeof themeApi
+export type AppApi = typeof appApi

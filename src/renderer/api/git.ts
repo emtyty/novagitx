@@ -81,6 +81,10 @@ declare global {
       setThemeSource: (source: 'system' | 'light' | 'dark') => Promise<void>
       onThemeChanged: (cb: (dark: boolean) => void) => () => void
     }
+    appOS: {
+      platform: NodeJS.Platform
+      onRepoOpenedFromOS: (cb: (info: RepoInfo) => void) => () => void
+    }
   }
 }
 

@@ -40,9 +40,13 @@ export function TitleBar({
   isPushing,
 }: TitleBarProps) {
   const displayPath = repoPath.replace(/^\/Users\/[^/]+/, '~')
+  const isMac = window.appOS.platform === 'darwin'
+  // mac: leave room for traffic lights on the left.
+  // win/linux: leave room for window-controls overlay on the right (~140px covers min/max/close).
+  const chromePad = isMac ? 'pl-[80px] pr-3' : 'pl-3 pr-[140px]'
 
   return (
-    <div className="titlebar-vibrancy flex h-11 items-center gap-3 border-b border-titlebar-border pl-[80px] pr-3 select-none">
+    <div className={`titlebar-vibrancy flex h-11 items-center gap-3 border-b border-titlebar-border ${chromePad} select-none`}>
       <div className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground/80">
         <GitBranch className="size-3.5 text-primary" />
         {repoName}
