@@ -212,6 +212,50 @@ const gitApi = {
     ipcRenderer.invoke(CHANNELS.REPO_READ_GITATTRIBUTES, repoPath),
   writeGitattributes: (repoPath: string, content: string): Promise<void> =>
     ipcRenderer.invoke(CHANNELS.REPO_WRITE_GITATTRIBUTES, repoPath, content),
+
+  // Worktrees
+  listWorktrees: (repoPath: string) => ipcRenderer.invoke(CHANNELS.WORKTREE_LIST, repoPath),
+  addWorktree: (repoPath: string, path: string, ref: string, newBranch?: string) =>
+    ipcRenderer.invoke(CHANNELS.WORKTREE_ADD, repoPath, path, ref, newBranch),
+  removeWorktree: (repoPath: string, path: string, force?: boolean) =>
+    ipcRenderer.invoke(CHANNELS.WORKTREE_REMOVE, repoPath, path, force),
+  pruneWorktrees: (repoPath: string) => ipcRenderer.invoke(CHANNELS.WORKTREE_PRUNE, repoPath),
+
+  // Archive
+  archive: (repoPath: string, ref: string, format: 'zip' | 'tar.gz', outputPath: string) =>
+    ipcRenderer.invoke(CHANNELS.REPO_ARCHIVE, repoPath, ref, format, outputPath),
+
+  // fsck
+  fsck: (repoPath: string) => ipcRenderer.invoke(CHANNELS.REPO_FSCK, repoPath),
+
+  // GPG signing
+  getCommitSignature: (repoPath: string, hash: string) =>
+    ipcRenderer.invoke(CHANNELS.COMMIT_SIGNATURE, repoPath, hash),
+  createSignedCommit: (repoPath: string, message: string) =>
+    ipcRenderer.invoke(CHANNELS.COMMIT_SIGN, repoPath, message),
+
+  // Mailmap
+  readMailmap: (repoPath: string) => ipcRenderer.invoke(CHANNELS.REPO_READ_MAILMAP, repoPath),
+  writeMailmap: (repoPath: string, content: string) => ipcRenderer.invoke(CHANNELS.REPO_WRITE_MAILMAP, repoPath, content),
+
+  // Sparse checkout
+  getSparseCheckout: (repoPath: string) => ipcRenderer.invoke(CHANNELS.SPARSE_GET, repoPath),
+  setSparseCheckout: (repoPath: string, patterns: string[], cone: boolean) =>
+    ipcRenderer.invoke(CHANNELS.SPARSE_SET, repoPath, patterns, cone),
+
+  // Git config
+  listConfig: (repoPath: string, scope: 'local' | 'global') =>
+    ipcRenderer.invoke(CHANNELS.CONFIG_LIST, repoPath, scope),
+  getConfigValue: (repoPath: string, key: string, scope: 'local' | 'global') =>
+    ipcRenderer.invoke(CHANNELS.CONFIG_GET, repoPath, key, scope),
+  setConfigValue: (repoPath: string, key: string, value: string, scope: 'local' | 'global') =>
+    ipcRenderer.invoke(CHANNELS.CONFIG_SET, repoPath, key, value, scope),
+  unsetConfigValue: (repoPath: string, key: string, scope: 'local' | 'global') =>
+    ipcRenderer.invoke(CHANNELS.CONFIG_UNSET, repoPath, key, scope),
+
+  // Save-file dialog
+  saveFileDialog: (defaultPath?: string, filters?: { name: string; extensions: string[] }[]) =>
+    ipcRenderer.invoke(CHANNELS.DIALOG_SAVE_FILE, defaultPath, filters),
 }
 
 contextBridge.exposeInMainWorld('git', gitApi)

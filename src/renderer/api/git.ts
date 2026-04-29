@@ -1,4 +1,4 @@
-import type { GitRevision, GitRef, GitItemStatus, DiffFile, LogOptions, RepoInfo, RefGroups, BlameLine, ReflogEntry, Remote, ConflictFile, StashEntry, Submodule, CleanEntry, RebaseCommit } from '@/types/git'
+import type { GitRevision, GitRef, GitItemStatus, DiffFile, LogOptions, RepoInfo, RefGroups, BlameLine, ReflogEntry, Remote, ConflictFile, StashEntry, Submodule, CleanEntry, RebaseCommit, Worktree, FsckResult, CommitSignature, SparseCheckoutInfo, GitConfigEntry } from '@/types/git'
 
 declare global {
   interface Window {
@@ -75,6 +75,23 @@ declare global {
       addToGitignore: (repoPath: string, pattern: string) => Promise<void>
       readGitattributes: (repoPath: string) => Promise<string>
       writeGitattributes: (repoPath: string, content: string) => Promise<void>
+      listWorktrees: (repoPath: string) => Promise<Worktree[]>
+      addWorktree: (repoPath: string, path: string, ref: string, newBranch?: string) => Promise<void>
+      removeWorktree: (repoPath: string, path: string, force?: boolean) => Promise<void>
+      pruneWorktrees: (repoPath: string) => Promise<void>
+      archive: (repoPath: string, ref: string, format: 'zip' | 'tar.gz', outputPath: string) => Promise<void>
+      fsck: (repoPath: string) => Promise<FsckResult>
+      getCommitSignature: (repoPath: string, hash: string) => Promise<CommitSignature>
+      createSignedCommit: (repoPath: string, message: string) => Promise<void>
+      readMailmap: (repoPath: string) => Promise<string>
+      writeMailmap: (repoPath: string, content: string) => Promise<void>
+      getSparseCheckout: (repoPath: string) => Promise<SparseCheckoutInfo>
+      setSparseCheckout: (repoPath: string, patterns: string[], cone: boolean) => Promise<void>
+      listConfig: (repoPath: string, scope: 'local' | 'global') => Promise<GitConfigEntry[]>
+      getConfigValue: (repoPath: string, key: string, scope: 'local' | 'global') => Promise<string | null>
+      setConfigValue: (repoPath: string, key: string, value: string, scope: 'local' | 'global') => Promise<void>
+      unsetConfigValue: (repoPath: string, key: string, scope: 'local' | 'global') => Promise<void>
+      saveFileDialog: (defaultPath?: string, filters?: { name: string; extensions: string[] }[]) => Promise<string | null>
     }
     theme: {
       getTheme: () => Promise<{ shouldUseDarkColors: boolean; themeSource: 'system' | 'light' | 'dark' }>
@@ -161,4 +178,21 @@ export const gitApi = {
   addToGitignore: (repoPath: string, pattern: string): Promise<void> => window.git.addToGitignore(repoPath, pattern),
   readGitattributes: (repoPath: string): Promise<string> => window.git.readGitattributes(repoPath),
   writeGitattributes: (repoPath: string, content: string): Promise<void> => window.git.writeGitattributes(repoPath, content),
+  listWorktrees: (repoPath: string) => window.git.listWorktrees(repoPath),
+  addWorktree: (repoPath: string, path: string, ref: string, newBranch?: string) => window.git.addWorktree(repoPath, path, ref, newBranch),
+  removeWorktree: (repoPath: string, path: string, force?: boolean) => window.git.removeWorktree(repoPath, path, force),
+  pruneWorktrees: (repoPath: string) => window.git.pruneWorktrees(repoPath),
+  archive: (repoPath: string, ref: string, format: 'zip' | 'tar.gz', outputPath: string) => window.git.archive(repoPath, ref, format, outputPath),
+  fsck: (repoPath: string) => window.git.fsck(repoPath),
+  getCommitSignature: (repoPath: string, hash: string) => window.git.getCommitSignature(repoPath, hash),
+  createSignedCommit: (repoPath: string, message: string) => window.git.createSignedCommit(repoPath, message),
+  readMailmap: (repoPath: string) => window.git.readMailmap(repoPath),
+  writeMailmap: (repoPath: string, content: string) => window.git.writeMailmap(repoPath, content),
+  getSparseCheckout: (repoPath: string) => window.git.getSparseCheckout(repoPath),
+  setSparseCheckout: (repoPath: string, patterns: string[], cone: boolean) => window.git.setSparseCheckout(repoPath, patterns, cone),
+  listConfig: (repoPath: string, scope: 'local' | 'global') => window.git.listConfig(repoPath, scope),
+  getConfigValue: (repoPath: string, key: string, scope: 'local' | 'global') => window.git.getConfigValue(repoPath, key, scope),
+  setConfigValue: (repoPath: string, key: string, value: string, scope: 'local' | 'global') => window.git.setConfigValue(repoPath, key, value, scope),
+  unsetConfigValue: (repoPath: string, key: string, scope: 'local' | 'global') => window.git.unsetConfigValue(repoPath, key, scope),
+  saveFileDialog: (defaultPath?: string, filters?: { name: string; extensions: string[] }[]) => window.git.saveFileDialog(defaultPath, filters),
 }

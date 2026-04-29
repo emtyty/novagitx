@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Minus, GitCommit, Archive, Trash2, Copy, FileText } from 'lucide-react'
 import type { GitItemStatus, DiffLine } from '@/types/git'
-import { useStatus, useCommitMutations, useCommitMutationsExtra, useStashMutations, useWorkingDiff, useStagedDiff, useHunkMutations } from '@/hooks/useRepo'
+import { useStatus, useCommitMutations, useCommitMutationsExtra, useStashMutations, useWorkingDiff, useStagedDiff, useHunkMutations, useSignedCommit } from '@/hooks/useRepo'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -22,8 +22,10 @@ export function StagingArea({ repoPath, onAddToGitignore }: StagingAreaProps) {
   const { stage, unstage, commit } = useCommitMutations(repoPath)
   const { discard, amend } = useCommitMutationsExtra(repoPath)
   const stash = useStashMutations(repoPath)
+  const signedCommit = useSignedCommit(repoPath)
   const [message, setMessage] = useState('')
   const [amendMode, setAmendMode] = useState(false)
+  const [signCommit, setSignCommit] = useState(false)
   const [stashMsg, setStashMsg] = useState('')
   const [showStashInput, setShowStashInput] = useState(false)
   const [selected, setSelected] = useState<SelectedFile>(null)
@@ -45,10 +47,13 @@ export function StagingArea({ repoPath, onAddToGitignore }: StagingAreaProps) {
 
   function handleCommit() {
     if (!message.trim()) return
+    const trimmed = message.trim()
     if (amendMode) {
-      amend.mutate(message.trim(), { onSuccess: () => { setMessage(''); setAmendMode(false) } })
+      amend.mutate(trimmed, { onSuccess: () => { setMessage(''); setAmendMode(false) } })
+    } else if (signCommit) {
+      signedCommit.mutate(trimmed, { onSuccess: () => setMessage('') })
     } else {
-      commit.mutate(message.trim(), { onSuccess: () => setMessage('') })
+      commit.mutate(trimmed, { onSuccess: () => setMessage('') })
     }
   }
 
@@ -173,17 +178,22 @@ export function StagingArea({ repoPath, onAddToGitignore }: StagingAreaProps) {
             <input type="checkbox" checked={amendMode} onChange={(e) => setAmendMode(e.target.checked)} className="rounded border-border" />
             Amend last commit
           </label>
+          <label className="flex items-center gap-2 text-[11.5px] cursor-pointer select-none text-muted-foreground">
+            <input type="checkbox" checked={signCommit} disabled={amendMode}
+              onChange={(e) => setSignCommit(e.target.checked)} className="rounded border-border" />
+            Sign with GPG (-S)
+          </label>
           <button
             onClick={handleCommit}
-            disabled={!message.trim() || (staged.length === 0 && !amendMode) || commit.isPending || amend.isPending}
+            disabled={!message.trim() || (staged.length === 0 && !amendMode) || commit.isPending || amend.isPending || signedCommit.isPending}
             className="flex items-center justify-center gap-1.5 h-8 rounded-md bg-primary text-primary-foreground text-[12px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
           >
             <GitCommit className="size-3.5" />
-            {commit.isPending || amend.isPending ? 'Working…' : amendMode ? 'Amend' : 'Commit'}
+            {commit.isPending || amend.isPending || signedCommit.isPending ? 'Working…' : amendMode ? 'Amend' : signCommit ? 'Commit (signed)' : 'Commit'}
             <span className="text-[10px] opacity-70 ml-1">⌘↵</span>
           </button>
-          {(commit.isError || amend.isError) && (
-            <p className="text-[11px] text-destructive">{String(((commit.error || amend.error) as any)?.message ?? 'Failed')}</p>
+          {(commit.isError || amend.isError || signedCommit.isError) && (
+            <p className="text-[11px] text-destructive">{String(((commit.error || amend.error || signedCommit.error) as any)?.message ?? 'Failed')}</p>
           )}
         </div>
       </div>

@@ -373,4 +373,80 @@ export function registerHandlers(): void {
   ipcMain.handle(CHANNELS.THEME_SET, (_, source: 'system' | 'light' | 'dark') => {
     nativeTheme.themeSource = source
   })
+
+  // ── Worktrees ─────────────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.WORKTREE_LIST, async (_, repoPath: string) => {
+    return getModule(repoPath).listWorktrees()
+  })
+  ipcMain.handle(CHANNELS.WORKTREE_ADD, async (_, repoPath: string, path: string, ref: string, newBranch?: string) => {
+    await getModule(repoPath).addWorktree(path, ref, newBranch)
+  })
+  ipcMain.handle(CHANNELS.WORKTREE_REMOVE, async (_, repoPath: string, path: string, force?: boolean) => {
+    await getModule(repoPath).removeWorktree(path, force)
+  })
+  ipcMain.handle(CHANNELS.WORKTREE_PRUNE, async (_, repoPath: string) => {
+    await getModule(repoPath).pruneWorktrees()
+  })
+
+  // ── Archive ───────────────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.REPO_ARCHIVE, async (_, repoPath: string, ref: string, format: 'zip' | 'tar.gz', outputPath: string) => {
+    await getModule(repoPath).archive(ref, format, outputPath)
+  })
+
+  // ── fsck ──────────────────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.REPO_FSCK, async (_, repoPath: string) => {
+    return getModule(repoPath).fsck()
+  })
+
+  // ── GPG signing ───────────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.COMMIT_SIGNATURE, async (_, repoPath: string, hash: string) => {
+    return getModule(repoPath).getCommitSignature(hash)
+  })
+  ipcMain.handle(CHANNELS.COMMIT_SIGN, async (_, repoPath: string, message: string) => {
+    await getModule(repoPath).createSignedCommit(message)
+  })
+
+  // ── Mailmap ───────────────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.REPO_READ_MAILMAP, async (_, repoPath: string) => {
+    return getModule(repoPath).readMailmap()
+  })
+  ipcMain.handle(CHANNELS.REPO_WRITE_MAILMAP, async (_, repoPath: string, content: string) => {
+    await getModule(repoPath).writeMailmap(content)
+  })
+
+  // ── Sparse checkout ───────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.SPARSE_GET, async (_, repoPath: string) => {
+    return getModule(repoPath).getSparseCheckout()
+  })
+  ipcMain.handle(CHANNELS.SPARSE_SET, async (_, repoPath: string, patterns: string[], cone: boolean) => {
+    await getModule(repoPath).setSparseCheckout(patterns, cone)
+  })
+
+  // ── Git config ────────────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.CONFIG_LIST, async (_, repoPath: string, scope: 'local' | 'global') => {
+    return getModule(repoPath).listConfig(scope)
+  })
+  ipcMain.handle(CHANNELS.CONFIG_GET, async (_, repoPath: string, key: string, scope: 'local' | 'global') => {
+    return getModule(repoPath).getConfig(key, scope)
+  })
+  ipcMain.handle(CHANNELS.CONFIG_SET, async (_, repoPath: string, key: string, value: string, scope: 'local' | 'global') => {
+    await getModule(repoPath).setConfig(key, value, scope)
+  })
+  ipcMain.handle(CHANNELS.CONFIG_UNSET, async (_, repoPath: string, key: string, scope: 'local' | 'global') => {
+    await getModule(repoPath).unsetConfig(key, scope)
+  })
+
+  // ── Save-file dialog ──────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.DIALOG_SAVE_FILE, async (_, defaultPath?: string, filters?: { name: string; extensions: string[] }[]) => {
+    const result = await dialog.showSaveDialog({ defaultPath, filters })
+    return result.canceled ? null : result.filePath ?? null
+  })
 }

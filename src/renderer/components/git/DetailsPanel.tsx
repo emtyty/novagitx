@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { FileText, GitCommit, FileDiff, Copy, History, GitBranch } from 'lucide-react'
 import type { GitRevision, DiffFile, DiffLine } from '@/types/git'
 import { hashColor, initials } from '@/types/git'
-import { useDiff, useFileDiff } from '@/hooks/useRepo'
+import { useDiff, useFileDiff, useCommitSignature } from '@/hooks/useRepo'
+import { ShieldCheck, ShieldAlert, ShieldOff } from 'lucide-react'
 import { FileHistoryPanel } from './FileHistoryPanel'
 import { BlameView } from './BlameView'
 import {
@@ -61,7 +62,7 @@ export function DetailsPanel({ commit, repoPath }: DetailsPanelProps) {
       )
     }
     if (tab === 'commit' && commit) {
-      return <CommitInfo commit={commit} />
+      return <CommitInfo commit={commit} repoPath={repoPath} />
     }
     return <DiffView repoPath={repoPath} commitHash={commit?.objectId ?? null} filePath={resolvedFile} />
   })()
@@ -227,8 +228,9 @@ function DiffView({
   )
 }
 
-function CommitInfo({ commit }: { commit: GitRevision }) {
+function CommitInfo({ commit, repoPath }: { commit: GitRevision; repoPath: string | null }) {
   const date = new Date(commit.authorUnixTime * 1000).toLocaleString()
+  const { data: sig } = useCommitSignature(repoPath, commit.objectId)
   return (
     <div className="overflow-y-auto scrollbar-mac p-5">
       <div className="flex items-start gap-3">
@@ -249,8 +251,26 @@ function CommitInfo({ commit }: { commit: GitRevision }) {
               <Field label="Parent" value={commit.parentIds.map((p) => p.slice(0, 8)).join(', ')} mono />
             )}
           </div>
+          {sig && sig.status !== 'unsigned' && <SignatureBadge sig={sig} />}
         </div>
       </div>
+    </div>
+  )
+}
+
+function SignatureBadge({ sig }: { sig: { status: string; signer: string | null; key: string | null } }) {
+  const tone =
+    sig.status === 'good' ? 'text-graph-2 border-graph-2/30 bg-graph-2/5'
+    : sig.status === 'bad' ? 'text-destructive border-destructive/30 bg-destructive/5'
+    : sig.status === 'expired' ? 'text-yellow-500 border-yellow-500/30 bg-yellow-500/5'
+    : 'text-muted-foreground border-border bg-muted/30'
+  const Icon = sig.status === 'good' ? ShieldCheck : sig.status === 'bad' ? ShieldAlert : ShieldOff
+  return (
+    <div className={`mt-3 inline-flex items-center gap-2 px-2 py-1 rounded border text-[11.5px] ${tone}`}>
+      <Icon className="size-3.5" />
+      <span className="font-medium uppercase tracking-wide">{sig.status} signature</span>
+      {sig.signer && <span className="text-muted-foreground/80">— {sig.signer}</span>}
+      {sig.key && <span className="font-mono text-[10.5px] text-muted-foreground/60">({sig.key})</span>}
     </div>
   )
 }

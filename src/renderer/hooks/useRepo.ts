@@ -550,3 +550,138 @@ export function useGitattributesMutations(repoPath: string | null) {
     onSuccess: invalidate,
   })
 }
+
+// ── Worktrees ───────────────────────────────────────────────────────────────
+
+export function useWorktrees(repoPath: string | null) {
+  return useQuery({
+    queryKey: ['worktrees', repoPath],
+    queryFn: () => gitApi.listWorktrees(repoPath!),
+    enabled: !!repoPath,
+    staleTime: 5_000,
+  })
+}
+
+export function useWorktreeMutations(repoPath: string | null) {
+  const qc = useQueryClient()
+  const inv = () => qc.invalidateQueries({ queryKey: ['worktrees', repoPath] })
+  const add = useMutation({
+    mutationFn: ({ path, ref, newBranch }: { path: string; ref: string; newBranch?: string }) =>
+      gitApi.addWorktree(repoPath!, path, ref, newBranch),
+    onSuccess: inv,
+  })
+  const remove = useMutation({
+    mutationFn: ({ path, force }: { path: string; force?: boolean }) =>
+      gitApi.removeWorktree(repoPath!, path, force),
+    onSuccess: inv,
+  })
+  const prune = useMutation({ mutationFn: () => gitApi.pruneWorktrees(repoPath!), onSuccess: inv })
+  return { add, remove, prune }
+}
+
+// ── Archive / fsck ──────────────────────────────────────────────────────────
+
+export function useArchive(repoPath: string | null) {
+  return useMutation({
+    mutationFn: ({ ref, format, outputPath }: { ref: string; format: 'zip' | 'tar.gz'; outputPath: string }) =>
+      gitApi.archive(repoPath!, ref, format, outputPath),
+  })
+}
+
+export function useFsck(repoPath: string | null) {
+  return useMutation({ mutationFn: () => gitApi.fsck(repoPath!) })
+}
+
+// ── GPG signing ─────────────────────────────────────────────────────────────
+
+export function useCommitSignature(repoPath: string | null, hash: string | null) {
+  return useQuery({
+    queryKey: ['signature', repoPath, hash],
+    queryFn: () => gitApi.getCommitSignature(repoPath!, hash!),
+    enabled: !!repoPath && !!hash,
+    staleTime: 60_000,
+  })
+}
+
+export function useSignedCommit(repoPath: string | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (message: string) => gitApi.createSignedCommit(repoPath!, message),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['log', repoPath] })
+      qc.invalidateQueries({ queryKey: ['status', repoPath] })
+    },
+  })
+}
+
+// ── Mailmap ─────────────────────────────────────────────────────────────────
+
+export function useMailmap(repoPath: string | null) {
+  return useQuery({
+    queryKey: ['mailmap', repoPath],
+    queryFn: () => gitApi.readMailmap(repoPath!),
+    enabled: !!repoPath,
+    staleTime: 10_000,
+  })
+}
+
+export function useMailmapMutation(repoPath: string | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (content: string) => gitApi.writeMailmap(repoPath!, content),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mailmap', repoPath] }),
+  })
+}
+
+// ── Sparse checkout ─────────────────────────────────────────────────────────
+
+export function useSparseCheckout(repoPath: string | null) {
+  return useQuery({
+    queryKey: ['sparse', repoPath],
+    queryFn: () => gitApi.getSparseCheckout(repoPath!),
+    enabled: !!repoPath,
+    staleTime: 5_000,
+  })
+}
+
+export function useSparseCheckoutMutation(repoPath: string | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ patterns, cone }: { patterns: string[]; cone: boolean }) =>
+      gitApi.setSparseCheckout(repoPath!, patterns, cone),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sparse', repoPath] })
+      qc.invalidateQueries({ queryKey: ['status', repoPath] })
+    },
+  })
+}
+
+// ── Git config ──────────────────────────────────────────────────────────────
+
+export function useGitConfig(repoPath: string | null, scope: 'local' | 'global') {
+  return useQuery({
+    queryKey: ['config', repoPath, scope],
+    queryFn: () => gitApi.listConfig(repoPath!, scope),
+    enabled: !!repoPath,
+    staleTime: 5_000,
+  })
+}
+
+export function useGitConfigMutations(repoPath: string | null) {
+  const qc = useQueryClient()
+  const inv = () => {
+    qc.invalidateQueries({ queryKey: ['config', repoPath, 'local'] })
+    qc.invalidateQueries({ queryKey: ['config', repoPath, 'global'] })
+  }
+  const set = useMutation({
+    mutationFn: ({ key, value, scope }: { key: string; value: string; scope: 'local' | 'global' }) =>
+      gitApi.setConfigValue(repoPath!, key, value, scope),
+    onSuccess: inv,
+  })
+  const unset = useMutation({
+    mutationFn: ({ key, scope }: { key: string; scope: 'local' | 'global' }) =>
+      gitApi.unsetConfigValue(repoPath!, key, scope),
+    onSuccess: inv,
+  })
+  return { set, unset }
+}

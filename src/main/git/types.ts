@@ -112,6 +112,42 @@ export interface LogOptions {
   grep?: string
   since?: string
   until?: string
+  pickaxe?: string          // -S "added/removed text"
+  pickaxeRegex?: string     // -G regex against diff
+  pathFilter?: string       // -- <path>
+}
+
+export interface Worktree {
+  path: string
+  hash: string
+  branch: string | null
+  isLocked: boolean
+  isPrunable: boolean
+  isDetached: boolean
+  isMain: boolean
+}
+
+export interface FsckResult {
+  output: string
+  hasIssues: boolean
+}
+
+export interface CommitSignature {
+  status: 'good' | 'bad' | 'unknown' | 'expired' | 'unsigned'
+  signer: string | null
+  key: string | null
+}
+
+export interface SparseCheckoutInfo {
+  enabled: boolean
+  patterns: string[]
+  cone: boolean
+}
+
+export interface GitConfigEntry {
+  key: string
+  value: string
+  scope: 'local' | 'global' | 'system'
 }
 
 export interface RepoInfo {

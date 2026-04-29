@@ -108,4 +108,23 @@ export const CHANNELS = {
 
   // OS integration (main → renderer push)
   REPO_OPENED_FROM_OS: 'app:repo:opened-from-os',
+
+  // Tier-3 features
+  WORKTREE_LIST:    'git:worktree:list',
+  WORKTREE_ADD:     'git:worktree:add',
+  WORKTREE_REMOVE:  'git:worktree:remove',
+  WORKTREE_PRUNE:   'git:worktree:prune',
+  REPO_ARCHIVE:     'git:repo:archive',
+  REPO_FSCK:        'git:repo:fsck',
+  COMMIT_SIGNATURE: 'git:commit:signature',
+  COMMIT_SIGN:      'git:commit:sign',
+  REPO_READ_MAILMAP:  'git:repo:read-mailmap',
+  REPO_WRITE_MAILMAP: 'git:repo:write-mailmap',
+  SPARSE_GET: 'git:sparse:get',
+  SPARSE_SET: 'git:sparse:set',
+  CONFIG_LIST:  'git:config:list',
+  CONFIG_GET:   'git:config:get',
+  CONFIG_SET:   'git:config:set',
+  CONFIG_UNSET: 'git:config:unset',
+  DIALOG_SAVE_FILE: 'git:dialog:save-file',
 } as const

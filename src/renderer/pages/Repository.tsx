@@ -32,6 +32,12 @@ import { SubmodulesDialog } from '@/components/git/SubmodulesDialog'
 import { CleanDialog } from '@/components/git/CleanDialog'
 import { GitignoreEditor } from '@/components/git/GitignoreEditor'
 import { SetUpstreamDialog } from '@/components/git/SetUpstreamDialog'
+import { WorktreesDialog } from '@/components/git/WorktreesDialog'
+import { ArchiveDialog } from '@/components/git/ArchiveDialog'
+import { FsckDialog } from '@/components/git/FsckDialog'
+import { MailmapEditor } from '@/components/git/MailmapEditor'
+import { SparseCheckoutDialog } from '@/components/git/SparseCheckoutDialog'
+import { SettingsDialog } from '@/components/git/SettingsDialog'
 import { useRepoStore } from '@/store/repoStore'
 import { gitApi } from '@/api/git'
 import {
@@ -88,6 +94,13 @@ export default function Repository() {
   const [cleanOpen, setCleanOpen] = useState(false)
   const [gitignoreFile, setGitignoreFile] = useState<GitignoreFile | null>(null)
   const [setUpstreamBranch, setSetUpstreamBranch] = useState<string | null>(null)
+  // Tier 3 dialogs
+  const [worktreesOpen, setWorktreesOpen] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [fsckOpen, setFsckOpen] = useState(false)
+  const [mailmapOpen, setMailmapOpen] = useState(false)
+  const [sparseOpen, setSparseOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const [detailsPx, setDetailsPx] = useState(300)
   const dragRef = useRef<{ startY: number; startH: number } | null>(null)
@@ -265,6 +278,14 @@ export default function Repository() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setGitignoreFile('gitignore')}>Edit .gitignore</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setGitignoreFile('gitattributes')}>Edit .gitattributes</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setMailmapOpen(true)}>Edit .mailmap…</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setWorktreesOpen(true)}>Worktrees…</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSparseOpen(true)}>Sparse checkout…</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setArchiveOpen(true)}>Archive…</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setFsckOpen(true)}>Verify (fsck)…</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setSettingsOpen(true)}>Settings…</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -443,6 +464,13 @@ export default function Repository() {
         remotes={remoteNames}
         remoteBranches={remoteBranches}
       />
+
+      <WorktreesDialog open={worktreesOpen} onOpenChange={setWorktreesOpen} repoPath={repoPath} />
+      <ArchiveDialog open={archiveOpen} onOpenChange={setArchiveOpen} repoPath={repoPath} />
+      <FsckDialog open={fsckOpen} onOpenChange={setFsckOpen} repoPath={repoPath} />
+      <MailmapEditor open={mailmapOpen} onOpenChange={setMailmapOpen} repoPath={repoPath} />
+      <SparseCheckoutDialog open={sparseOpen} onOpenChange={setSparseOpen} repoPath={repoPath} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} repoPath={repoPath} />
     </main>
   )
 }

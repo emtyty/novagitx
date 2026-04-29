@@ -8,7 +8,7 @@ import { StatusParser } from './StatusParser.js'
 import { DiffParser } from './DiffParser.js'
 import { writeFileSync, unlinkSync, readFileSync, existsSync, chmodSync } from 'fs'
 import { tmpdir } from 'os'
-import type { GitRevision, GitItemStatus, DiffFile, LogOptions, RepoInfo, RefGroups, BlameLine, ReflogEntry, Remote, ConflictFile, StashEntry, Submodule, CleanEntry, RebaseCommit } from './types.js'
+import type { GitRevision, GitItemStatus, DiffFile, LogOptions, RepoInfo, RefGroups, BlameLine, ReflogEntry, Remote, ConflictFile, StashEntry, Submodule, CleanEntry, RebaseCommit, Worktree, FsckResult, CommitSignature, SparseCheckoutInfo, GitConfigEntry } from './types.js'
 
 export class GitModule {
   private readonly executor: GitExecutor
@@ -641,5 +641,164 @@ export class GitModule {
 
   async writeGitattributes(content: string): Promise<void> {
     writeFileSync(join(this.repoPath, '.gitattributes'), content, 'utf8')
+  }
+
+  // ── Worktrees ─────────────────────────────────────────────────────────────
+
+  async listWorktrees(): Promise<Worktree[]> {
+    const result = await this.executor.run(['worktree', 'list', '--porcelain'])
+    if (result.exitCode !== 0) return []
+    const trees: Worktree[] = []
+    let cur: Partial<Worktree> = {}
+    for (const line of result.stdout.split('\n')) {
+      if (line.startsWith('worktree ')) {
+        if (cur.path) trees.push(this.finalizeWorktree(cur, trees.length === 0))
+        cur = { path: line.slice(9), isLocked: false, isPrunable: false, isDetached: false, isMain: false, hash: '', branch: null }
+      } else if (line.startsWith('HEAD ')) cur.hash = line.slice(5)
+      else if (line.startsWith('branch ')) cur.branch = line.slice(7).replace(/^refs\/heads\//, '')
+      else if (line === 'detached') cur.isDetached = true
+      else if (line.startsWith('locked')) cur.isLocked = true
+      else if (line.startsWith('prunable')) cur.isPrunable = true
+    }
+    if (cur.path) trees.push(this.finalizeWorktree(cur, trees.length === 0))
+    return trees
+  }
+
+  private finalizeWorktree(p: Partial<Worktree>, isMain: boolean): Worktree {
+    return {
+      path: p.path!,
+      hash: p.hash ?? '',
+      branch: p.branch ?? null,
+      isLocked: !!p.isLocked,
+      isPrunable: !!p.isPrunable,
+      isDetached: !!p.isDetached,
+      isMain,
+    }
+  }
+
+  async addWorktree(path: string, ref: string, newBranch?: string): Promise<void> {
+    const args = ['worktree', 'add']
+    if (newBranch) args.push('-b', newBranch)
+    args.push(path, ref)
+    const result = await this.executor.run(args)
+    if (result.exitCode !== 0) throw new Error(result.stderr.trim())
+  }
+
+  async removeWorktree(path: string, force: boolean = false): Promise<void> {
+    const args = ['worktree', 'remove']
+    if (force) args.push('--force')
+    args.push(path)
+    const result = await this.executor.run(args)
+    if (result.exitCode !== 0) throw new Error(result.stderr.trim())
+  }
+
+  async pruneWorktrees(): Promise<void> {
+    await this.executor.run(['worktree', 'prune'])
+  }
+
+  // ── Archive ───────────────────────────────────────────────────────────────
+
+  async archive(ref: string, format: 'zip' | 'tar.gz', outputPath: string): Promise<void> {
+    const fmt = format === 'tar.gz' ? 'tar.gz' : 'zip'
+    const result = await this.executor.run(['archive', `--format=${fmt}`, `--output=${outputPath}`, ref])
+    if (result.exitCode !== 0) throw new Error(result.stderr.trim())
+  }
+
+  // ── fsck ──────────────────────────────────────────────────────────────────
+
+  async fsck(): Promise<FsckResult> {
+    const result = await this.executor.run(['fsck', '--full', '--strict'])
+    const output = (result.stdout + result.stderr).trim()
+    return { output: output || 'No issues found.', hasIssues: result.exitCode !== 0 }
+  }
+
+  // ── GPG signing ───────────────────────────────────────────────────────────
+
+  async getCommitSignature(hash: string): Promise<CommitSignature> {
+    // %G?  G=good, B=bad, U=untrusted/good, X=expired, Y=expired key, R=revoked key, E=missing key, N=no signature
+    const result = await this.executor.run(['log', '-1', '--pretty=format:%G?%n%GS%n%GK', hash])
+    if (result.exitCode !== 0) return { status: 'unknown', signer: null, key: null }
+    const [code = 'N', signer = '', key = ''] = result.stdout.split('\n')
+    const status =
+      code === 'G' || code === 'U' ? 'good'
+      : code === 'B' ? 'bad'
+      : code === 'X' || code === 'Y' ? 'expired'
+      : code === 'N' ? 'unsigned'
+      : 'unknown'
+    return { status, signer: signer || null, key: key || null }
+  }
+
+  async createSignedCommit(message: string): Promise<void> {
+    const result = await this.executor.run(['commit', '-S', '-m', message])
+    if (result.exitCode !== 0) throw new Error(result.stderr.trim())
+  }
+
+  // ── Mailmap ───────────────────────────────────────────────────────────────
+
+  async readMailmap(): Promise<string> {
+    const p = join(this.repoPath, '.mailmap')
+    return existsSync(p) ? readFileSync(p, 'utf8') : ''
+  }
+
+  async writeMailmap(content: string): Promise<void> {
+    writeFileSync(join(this.repoPath, '.mailmap'), content, 'utf8')
+  }
+
+  // ── Sparse checkout ───────────────────────────────────────────────────────
+
+  async getSparseCheckout(): Promise<SparseCheckoutInfo> {
+    const enabledResult = await this.executor.run(['config', '--get', 'core.sparseCheckout'])
+    const enabled = enabledResult.stdout.trim() === 'true'
+    const coneResult = await this.executor.run(['config', '--get', 'core.sparseCheckoutCone'])
+    const cone = coneResult.stdout.trim() === 'true'
+    const sparseFile = join(this.repoPath, '.git', 'info', 'sparse-checkout')
+    const patterns = existsSync(sparseFile)
+      ? readFileSync(sparseFile, 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#'))
+      : []
+    return { enabled, patterns, cone }
+  }
+
+  async setSparseCheckout(patterns: string[], cone: boolean): Promise<void> {
+    if (patterns.length === 0) {
+      await this.executor.run(['sparse-checkout', 'disable'])
+      return
+    }
+    const initArgs = ['sparse-checkout', 'init']
+    if (cone) initArgs.push('--cone')
+    else initArgs.push('--no-cone')
+    await this.executor.run(initArgs)
+    const result = await this.executor.run(['sparse-checkout', 'set', ...patterns])
+    if (result.exitCode !== 0) throw new Error(result.stderr.trim())
+  }
+
+  // ── Git config ────────────────────────────────────────────────────────────
+
+  async listConfig(scope: 'local' | 'global'): Promise<GitConfigEntry[]> {
+    const result = await this.executor.run(['config', `--${scope}`, '--list'])
+    if (result.exitCode !== 0) return []
+    return result.stdout
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => {
+        const eq = line.indexOf('=')
+        if (eq === -1) return null
+        return { key: line.slice(0, eq), value: line.slice(eq + 1), scope } as GitConfigEntry
+      })
+      .filter((e): e is GitConfigEntry => e !== null)
+  }
+
+  async getConfig(key: string, scope: 'local' | 'global' = 'local'): Promise<string | null> {
+    const result = await this.executor.run(['config', `--${scope}`, '--get', key])
+    if (result.exitCode !== 0) return null
+    return result.stdout.trim() || null
+  }
+
+  async setConfig(key: string, value: string, scope: 'local' | 'global' = 'local'): Promise<void> {
+    const result = await this.executor.run(['config', `--${scope}`, key, value])
+    if (result.exitCode !== 0) throw new Error(result.stderr.trim())
+  }
+
+  async unsetConfig(key: string, scope: 'local' | 'global' = 'local'): Promise<void> {
+    await this.executor.run(['config', `--${scope}`, '--unset', key])
   }
 }

@@ -27,6 +27,9 @@ export class RevisionReader {
     if (opts.grep) args.push(`--grep=${opts.grep}`)
     if (opts.since) args.push(`--since=${opts.since}`)
     if (opts.until) args.push(`--until=${opts.until}`)
+    if (opts.pickaxe) args.push(`-S${opts.pickaxe}`)
+    if (opts.pickaxeRegex) args.push(`-G${opts.pickaxeRegex}`)
+    if (opts.pathFilter) args.push('--', opts.pathFilter)
 
     const result = await this.executor.run(args)
     if (result.exitCode !== 0 && result.stdout.trim() === '') return []
