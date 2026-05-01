@@ -127,4 +127,10 @@ export const CHANNELS = {
   CONFIG_SET:   'git:config:set',
   CONFIG_UNSET: 'git:config:unset',
   DIALOG_SAVE_FILE: 'git:dialog:save-file',
+
+  // Commit template + SSH keys (user-global, no repo)
+  TEMPLATE_READ:  'app:template:read',
+  TEMPLATE_WRITE: 'app:template:write',
+  SSH_LIST:       'app:ssh:list',
+  SSH_GENERATE:   'app:ssh:generate',
 } as const

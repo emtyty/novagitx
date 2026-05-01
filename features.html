@@ -446,8 +446,14 @@
         <tr>
           <td><div class="feature-name">Settings / Preferences</div></td>
           <td><span class="form-ref">FormSettings</span></td>
-          <td><span class="badge badge-partial">Partial</span></td>
-          <td class="note">Git config (local + global) editor with common keys: user name/email, signing key, sign-by-default, editor, autocrlf, pull.rebase, diff/merge tool. Theme is wired separately. <strong>Deferred:</strong> SSH key generator, commit-template editor, hotkey rebinder.</td>
+          <td><span class="badge badge-done">Done</span></td>
+          <td class="note">Tabbed dialog with Git config (local + global), commit-template editor (read/write any path, default <code>~/.gitmessage</code>), and SSH key manager (list <code>~/.ssh/*.pub</code>, generate ed25519 / rsa-4096 via <code>ssh-keygen</code>, copy public key). Theme is wired separately.</td>
+        </tr>
+        <tr>
+          <td><div class="feature-name">Hotkey Rebinder</div></td>
+          <td><span class="form-ref">FormHotkeys</span></td>
+          <td><span class="badge badge-missing">Deferred</span></td>
+          <td class="note">User-customizable keyboard shortcuts. <strong>Deferred</strong> — needs a central shortcut registry, persistence, and conflict detection; existing handlers are scattered across components and would need a dedicated refactor.</td>
         </tr>
         <tr>
           <td><div class="feature-name">Sparse Checkout</div></td>
@@ -507,6 +513,8 @@
       <div class="impl-item">Mailmap editor</div>
       <div class="impl-item">Sparse checkout (cone / non-cone)</div>
       <div class="impl-item">Settings (git config local + global)</div>
+      <div class="impl-item">Commit-template editor</div>
+      <div class="impl-item">SSH key manager (list / generate)</div>
       <div class="impl-item">Clone repository</div>
       <div class="impl-item">Init repository</div>
       <div class="impl-item">Open / switch repository</div>

@@ -92,6 +92,10 @@ declare global {
       setConfigValue: (repoPath: string, key: string, value: string, scope: 'local' | 'global') => Promise<void>
       unsetConfigValue: (repoPath: string, key: string, scope: 'local' | 'global') => Promise<void>
       saveFileDialog: (defaultPath?: string, filters?: { name: string; extensions: string[] }[]) => Promise<string | null>
+      readCommitTemplate: (path?: string) => Promise<{ path: string; content: string }>
+      writeCommitTemplate: (path: string | undefined, content: string) => Promise<string>
+      listSshKeys: () => Promise<{ name: string; path: string; publicKey: string }[]>
+      generateSshKey: (args: { name: string; type: 'ed25519' | 'rsa'; comment: string; passphrase: string }) => Promise<{ name: string; path: string; publicKey: string }>
     }
     theme: {
       getTheme: () => Promise<{ shouldUseDarkColors: boolean; themeSource: 'system' | 'light' | 'dark' }>
@@ -195,4 +199,8 @@ export const gitApi = {
   setConfigValue: (repoPath: string, key: string, value: string, scope: 'local' | 'global') => window.git.setConfigValue(repoPath, key, value, scope),
   unsetConfigValue: (repoPath: string, key: string, scope: 'local' | 'global') => window.git.unsetConfigValue(repoPath, key, scope),
   saveFileDialog: (defaultPath?: string, filters?: { name: string; extensions: string[] }[]) => window.git.saveFileDialog(defaultPath, filters),
+  readCommitTemplate: (path?: string) => window.git.readCommitTemplate(path),
+  writeCommitTemplate: (path: string | undefined, content: string) => window.git.writeCommitTemplate(path, content),
+  listSshKeys: () => window.git.listSshKeys(),
+  generateSshKey: (args: { name: string; type: 'ed25519' | 'rsa'; comment: string; passphrase: string }) => window.git.generateSshKey(args),
 }

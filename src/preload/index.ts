@@ -256,6 +256,18 @@ const gitApi = {
   // Save-file dialog
   saveFileDialog: (defaultPath?: string, filters?: { name: string; extensions: string[] }[]) =>
     ipcRenderer.invoke(CHANNELS.DIALOG_SAVE_FILE, defaultPath, filters),
+
+  // Commit template
+  readCommitTemplate: (path?: string): Promise<{ path: string; content: string }> =>
+    ipcRenderer.invoke(CHANNELS.TEMPLATE_READ, path),
+  writeCommitTemplate: (path: string | undefined, content: string): Promise<string> =>
+    ipcRenderer.invoke(CHANNELS.TEMPLATE_WRITE, path, content),
+
+  // SSH keys
+  listSshKeys: (): Promise<{ name: string; path: string; publicKey: string }[]> =>
+    ipcRenderer.invoke(CHANNELS.SSH_LIST),
+  generateSshKey: (args: { name: string; type: 'ed25519' | 'rsa'; comment: string; passphrase: string }): Promise<{ name: string; path: string; publicKey: string }> =>
+    ipcRenderer.invoke(CHANNELS.SSH_GENERATE, args),
 }
 
 contextBridge.exposeInMainWorld('git', gitApi)

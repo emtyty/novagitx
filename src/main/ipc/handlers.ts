@@ -2,6 +2,10 @@ import { ipcMain, dialog, nativeTheme } from 'electron/main'
 import { CHANNELS } from './channels.js'
 import { GitModule } from '../git/GitModule.js'
 import type { LogOptions, RebaseCommit } from '../git/types.js'
+import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs'
+import { homedir } from 'os'
+import { join } from 'path'
+import { spawn } from 'child_process'
 
 const modules = new Map<string, GitModule>()
 
@@ -449,4 +453,69 @@ export function registerHandlers(): void {
     const result = await dialog.showSaveDialog({ defaultPath, filters })
     return result.canceled ? null : result.filePath ?? null
   })
+
+  // ── Commit template ──────────────────────────────────────────────────────
+  // Reads/writes the file at `path` (or ~/.gitmessage by default).
+
+  ipcMain.handle(CHANNELS.TEMPLATE_READ, async (_, path?: string) => {
+    const file = path && path.trim() ? expandHome(path) : join(homedir(), '.gitmessage')
+    return { path: file, content: existsSync(file) ? readFileSync(file, 'utf8') : '' }
+  })
+  ipcMain.handle(CHANNELS.TEMPLATE_WRITE, async (_, path: string | undefined, content: string) => {
+    const file = path && path.trim() ? expandHome(path) : join(homedir(), '.gitmessage')
+    writeFileSync(file, content, 'utf8')
+    return file
+  })
+
+  // ── SSH keys ─────────────────────────────────────────────────────────────
+
+  ipcMain.handle(CHANNELS.SSH_LIST, async () => {
+    const dir = join(homedir(), '.ssh')
+    if (!existsSync(dir)) return [] as { name: string; path: string; publicKey: string }[]
+    return readdirSync(dir)
+      .filter((f) => f.endsWith('.pub'))
+      .map((f) => {
+        const path = join(dir, f)
+        try {
+          const publicKey = readFileSync(path, 'utf8').trim()
+          return { name: f.replace(/\.pub$/, ''), path, publicKey }
+        } catch {
+          return null
+        }
+      })
+      .filter((x): x is { name: string; path: string; publicKey: string } => x !== null)
+  })
+  ipcMain.handle(
+    CHANNELS.SSH_GENERATE,
+    async (_, args: { name: string; type: 'ed25519' | 'rsa'; comment: string; passphrase: string }) => {
+      const safeName = args.name.replace(/[^a-zA-Z0-9_-]/g, '')
+      if (!safeName) throw new Error('Invalid key name')
+      const dir = join(homedir(), '.ssh')
+      const target = join(dir, safeName)
+      if (existsSync(target) || existsSync(target + '.pub')) {
+        throw new Error(`Key "${safeName}" already exists`)
+      }
+      const cmdArgs = ['-t', args.type === 'rsa' ? 'rsa' : 'ed25519']
+      if (args.type === 'rsa') cmdArgs.push('-b', '4096')
+      cmdArgs.push('-f', target, '-C', args.comment || '', '-N', args.passphrase || '')
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn('ssh-keygen', cmdArgs, { stdio: 'pipe' })
+        let stderr = ''
+        proc.stderr.on('data', (d) => { stderr += d.toString() })
+        proc.on('error', reject)
+        proc.on('close', (code) => {
+          if (code === 0) resolve()
+          else reject(new Error(stderr.trim() || `ssh-keygen exited ${code}`))
+        })
+      })
+      const pub = readFileSync(target + '.pub', 'utf8').trim()
+      return { name: safeName, path: target, publicKey: pub }
+    },
+  )
+}
+
+function expandHome(p: string): string {
+  if (p.startsWith('~/')) return join(homedir(), p.slice(2))
+  if (p === '~') return homedir()
+  return p
 }
