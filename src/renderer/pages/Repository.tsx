@@ -265,7 +265,7 @@ export default function Repository() {
                       More <ChevronDown className="size-3" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuContent align="end" className="w-52 max-h-[70vh] overflow-y-auto">
                     <DropdownMenuItem onClick={() => setIRebaseOpen(true)}>Interactive Rebase…</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setCompareOpen(true)}>Compare branches…</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setStashOpen(true)}>Stash manager…</DropdownMenuItem>
