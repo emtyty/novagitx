@@ -1,4 +1,4 @@
-import { ipcMain, dialog, nativeTheme } from 'electron/main'
+import { ipcMain, dialog, nativeTheme, BrowserWindow } from 'electron/main'
 import { CHANNELS } from './channels.js'
 import { GitModule } from '../git/GitModule.js'
 import type { LogOptions, RebaseCommit } from '../git/types.js'
@@ -512,6 +512,13 @@ export function registerHandlers(): void {
       return { name: safeName, path: target, publicKey: pub }
     },
   )
+
+  ipcMain.handle(CHANNELS.WINDOW_TOGGLE_MAXIMIZE, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  })
 }
 
 function expandHome(p: string): string {

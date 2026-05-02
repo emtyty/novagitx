@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react'
 import { Search, GitBranch, GitMerge, GitPullRequest, ArrowDownToLine, ArrowUpFromLine, RotateCw, Plus, Settings2, Sun, Moon, Monitor } from 'lucide-react'
 import {
   DropdownMenu,
@@ -45,8 +46,17 @@ export function TitleBar({
   // win/linux: leave room for window-controls overlay on the right (~140px covers min/max/close).
   const chromePad = isMac ? 'pl-[80px] pr-3' : 'pl-3 pr-[140px]'
 
+  const handleTitleBarDoubleClick = (e: MouseEvent<HTMLDivElement>) => {
+    // Only trigger when double-clicking blank titlebar area, not interactive children.
+    if ((e.target as HTMLElement).closest('button, a, input, [role="button"]')) return
+    window.appOS.toggleMaximize()
+  }
+
   return (
-    <div className={`titlebar-vibrancy flex h-11 items-center gap-3 border-b border-titlebar-border ${chromePad} select-none`}>
+    <div
+      onDoubleClick={handleTitleBarDoubleClick}
+      className={`titlebar-vibrancy flex h-11 items-center gap-3 border-b border-titlebar-border ${chromePad} select-none`}
+    >
       <div className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground/80">
         <GitBranch className="size-3.5 text-primary" />
         {repoName}

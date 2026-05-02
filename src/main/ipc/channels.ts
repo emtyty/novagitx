@@ -133,4 +133,7 @@ export const CHANNELS = {
   TEMPLATE_WRITE: 'app:template:write',
   SSH_LIST:       'app:ssh:list',
   SSH_GENERATE:   'app:ssh:generate',
+
+  // Window controls
+  WINDOW_TOGGLE_MAXIMIZE: 'app:window:toggle-maximize',
 } as const
