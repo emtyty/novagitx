@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useRepoStore } from '@/store/repoStore'
 import { useTheme, type ThemeMode } from '@/hooks/useTheme'
+import { installGlobalShortcuts } from '@/hooks/useShortcut'
 import Welcome from './pages/Welcome'
 import Repository from './pages/Repository'
 
@@ -34,6 +35,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 function AppContent() {
   const { repoInfo, setRepo } = useRepoStore()
   useEffect(() => window.appOS.onRepoOpenedFromOS(setRepo), [setRepo])
+  useEffect(() => installGlobalShortcuts(), [])
   return repoInfo ? <Repository /> : <Welcome />
 }
 

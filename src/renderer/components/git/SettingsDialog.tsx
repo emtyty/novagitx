@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Settings2, KeyRound, FileText, Copy, Plus, Loader2 } from 'lucide-react'
+import { Settings2, KeyRound, FileText, Copy, Plus, Loader2, Keyboard } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useGitConfig, useGitConfigMutations } from '@/hooks/useRepo'
 import { gitApi } from '@/api/git'
 import type { GitConfigEntry } from '@/types/git'
+import { HotkeysPanel } from '@/components/git/HotkeysPanel'
 
 interface Props {
   open: boolean
@@ -25,7 +26,7 @@ const COMMON_KEYS = [
   { key: 'init.defaultBranch', label: 'Default branch name' },
 ] as const
 
-type Tab = 'config' | 'template' | 'ssh'
+type Tab = 'config' | 'template' | 'ssh' | 'keys'
 
 export function SettingsDialog({ open, onOpenChange, repoPath }: Props) {
   const [tab, setTab] = useState<Tab>('config')
@@ -41,11 +42,13 @@ export function SettingsDialog({ open, onOpenChange, repoPath }: Props) {
           <TabButton active={tab === 'config'} onClick={() => setTab('config')} icon={Settings2}>Git config</TabButton>
           <TabButton active={tab === 'template'} onClick={() => setTab('template')} icon={FileText}>Commit template</TabButton>
           <TabButton active={tab === 'ssh'} onClick={() => setTab('ssh')} icon={KeyRound}>SSH keys</TabButton>
+          <TabButton active={tab === 'keys'} onClick={() => setTab('keys')} icon={Keyboard}>Keyboard</TabButton>
         </div>
 
         {tab === 'config' && <ConfigPanel repoPath={repoPath} open={open} />}
         {tab === 'template' && <TemplatePanel />}
         {tab === 'ssh' && <SshPanel open={open} />}
+        {tab === 'keys' && <HotkeysPanel />}
 
         <DialogFooter>
           <button onClick={() => onOpenChange(false)} className="h-8 px-4 rounded-md text-[12px] text-muted-foreground hover:bg-muted">Close</button>

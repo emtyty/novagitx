@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useShortcut } from '@/hooks/useShortcut'
 import { GitBranch, ChevronDown } from 'lucide-react'
 import {
   DropdownMenu,
@@ -129,16 +130,20 @@ export default function Repository() {
   const remoteNames = [...new Set(refs.remotes.map((r) => r.remote))].filter(Boolean)
   const remoteBranches = refs.remotes.map((r) => r.completeName.replace('refs/remotes/', ''))
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setPaletteOpen((o) => !o)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  useShortcut(
+    { id: 'palette.toggle', label: 'Toggle command palette', defaultCombo: 'Mod+K', group: 'General' },
+    useCallback(() => setPaletteOpen((o) => !o), []),
+    { allowInEditable: true },
+  )
+  useShortcut(
+    { id: 'palette.close', label: 'Close command palette', defaultCombo: 'Escape', group: 'General' },
+    useCallback(() => setPaletteOpen(false), []),
+    { enabled: paletteOpen, allowInEditable: true },
+  )
+  useShortcut(
+    { id: 'staging.toggle', label: 'Toggle staging area', defaultCombo: 'Mod+G', group: 'General' },
+    useCallback(() => setShowStaging((s) => !s), []),
+  )
 
   function handleSelect(c: GitRevision) {
     setSelectedId(c.objectId)

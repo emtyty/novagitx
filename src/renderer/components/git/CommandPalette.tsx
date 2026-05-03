@@ -19,14 +19,6 @@ export function CommandPalette({ open, onClose, refs, commits, onCheckout }: Com
     if (!open) setQ('')
   }, [open])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    if (open) window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
   if (!open) return null
 
   const items: PaletteItem[] = [
