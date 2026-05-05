@@ -1,7 +1,7 @@
 import * as electronMain from 'electron/main'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
-import { existsSync, statSync } from 'fs'
+import { stat } from 'fs/promises'
 import { registerHandlers } from './ipc/handlers.js'
 import { CHANNELS } from './ipc/channels.js'
 import { GitModule } from './git/GitModule.js'
@@ -13,19 +13,27 @@ const isDev = process.env.NODE_ENV === 'development'
 let mainWindow: ReturnType<typeof BrowserWindow.prototype.constructor> | null = null
 let pendingRepoPath: string | null = null
 
-function extractRepoPathFromArgv(argv: string[]): string | null {
+async function isDirectory(p: string): Promise<boolean> {
+  try {
+    return (await stat(p)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+async function extractRepoPathFromArgv(argv: string[]): Promise<string | null> {
   // Skip the executable; on Windows packaged builds the first arg is the .exe.
   // The OS context-menu invocation passes the directory as the last positional arg.
   for (let i = argv.length - 1; i >= 1; i--) {
     const arg = argv[i]
     if (!arg || arg.startsWith('-')) continue
-    if (existsSync(arg) && statSync(arg).isDirectory()) return arg
+    if (await isDirectory(arg)) return arg
   }
   return null
 }
 
 async function openRepoFromOS(repoPath: string): Promise<void> {
-  if (!existsSync(repoPath) || !statSync(repoPath).isDirectory()) return
+  if (!(await isDirectory(repoPath))) return
   const mod = new GitModule(repoPath)
   if (!(await mod.isValidRepo())) return
   const info = await mod.getRepoInfo()
@@ -111,8 +119,8 @@ if (!gotLock) {
   app.quit()
 } else {
   // Windows: a second invocation (e.g. from Explorer context menu) forwards its argv here.
-  app.on('second-instance', (_event: Electron.Event, argv: string[]) => {
-    const repoPath = extractRepoPathFromArgv(argv)
+  app.on('second-instance', async (_event: Electron.Event, argv: string[]) => {
+    const repoPath = await extractRepoPathFromArgv(argv)
     if (repoPath) openRepoFromOS(repoPath)
     else if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
@@ -127,12 +135,16 @@ if (!gotLock) {
     else pendingRepoPath = path
   })
 
-  // Capture argv on initial Windows launch from the context menu.
-  pendingRepoPath = extractRepoPathFromArgv(process.argv)
-
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     registerHandlers()
     createWindow()
+
+    // Resolve initial argv (Windows context-menu launch) off the critical path.
+    extractRepoPathFromArgv(process.argv).then((p) => {
+      if (!p) return
+      if (mainWindow && !mainWindow.webContents.isLoading()) openRepoFromOS(p)
+      else pendingRepoPath = p
+    })
 
     nativeTheme.on('updated', () => {
       const dark = nativeTheme.shouldUseDarkColors

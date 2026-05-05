@@ -92,7 +92,14 @@
   "build": {
     "appId": "io.creativeforce.novagitx",
     "productName": "NovaGitX",
+    "asar": true,
+    "compression": "maximum",
+    "afterPack": "scripts/afterPack.cjs",
     "mac": {
+      "electronLanguages": [
+        "en",
+        "en_US"
+      ],
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
       "target": [
