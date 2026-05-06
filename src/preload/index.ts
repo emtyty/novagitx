@@ -23,6 +23,7 @@ const appApi = {
     return () => ipcRenderer.removeListener(CHANNELS.REPO_OPENED_FROM_OS, listener)
   },
   toggleMaximize: (): Promise<void> => ipcRenderer.invoke(CHANNELS.WINDOW_TOGGLE_MAXIMIZE),
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke(CHANNELS.OPEN_EXTERNAL, url),
 }
 
 const gitApi = {

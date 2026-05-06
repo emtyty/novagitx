@@ -193,6 +193,18 @@ export default function Repository() {
           onOpenRepo={async () => { const info = await gitApi.openRepo(); if (info) setRepo(info) }}
           onCloneRepo={() => setCloneOpen(true)}
           onInitRepo={async () => { const info = await gitApi.initRepo(); if (info) setRepo(info) }}
+          onCreateBranch={() => setCreateBranch({ open: true, from: repoInfo.currentBranch ?? '' })}
+          onRenameBranch={() => { if (repoInfo.currentBranch) setRenameBranchName(repoInfo.currentBranch) }}
+          onMerge={() => setMergeOpen(true)}
+          onOpenPR={async () => {
+            if (!repoPath) return
+            const remotes = await gitApi.getRemotes(repoPath)
+            const origin = remotes.find((r) => r.name === 'origin') ?? remotes[0]
+            if (!origin) return
+            const url = buildPullRequestUrl(origin.fetchUrl || origin.pushUrl, repoInfo.currentBranch)
+            if (url) window.appOS.openExternal(url)
+          }}
+          onOpenSettings={() => setSettingsOpen(true)}
           isFetching={remoteMutations.fetch.isPending}
           isPulling={remoteMutations.pull.isPending}
           isPushing={remoteMutations.push.isPending}
@@ -478,4 +490,21 @@ export default function Repository() {
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} repoPath={repoPath} />
     </main>
   )
+}
+
+function buildPullRequestUrl(remoteUrl: string, branch: string | null): string | null {
+  if (!remoteUrl) return null
+  // Normalize: git@github.com:owner/repo(.git) → host=github.com, path=owner/repo
+  const ssh = remoteUrl.match(/^git@([^:]+):(.+?)(?:\.git)?$/)
+  const https = remoteUrl.match(/^https?:\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/)
+  const m = ssh ?? https
+  if (!m) return null
+  const host = m[1]
+  const path = m[2].replace(/\/$/, '')
+  const base = `https://${host}/${path}`
+  if (!branch) return base
+  if (host.includes('github.com')) return `${base}/pull/new/${encodeURIComponent(branch)}`
+  if (host.includes('gitlab')) return `${base}/-/merge_requests/new?merge_request%5Bsource_branch%5D=${encodeURIComponent(branch)}`
+  if (host.includes('bitbucket.org')) return `${base}/pull-requests/new?source=${encodeURIComponent(branch)}`
+  return base
 }

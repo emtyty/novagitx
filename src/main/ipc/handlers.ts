@@ -1,4 +1,4 @@
-import { ipcMain, dialog, nativeTheme, BrowserWindow } from 'electron/main'
+import { ipcMain, dialog, nativeTheme, BrowserWindow, shell } from 'electron/main'
 import { CHANNELS } from './channels.js'
 import { GitModule } from '../git/GitModule.js'
 import type { LogOptions, RebaseCommit } from '../git/types.js'
@@ -518,6 +518,11 @@ export function registerHandlers(): void {
     if (!win) return
     if (win.isMaximized()) win.unmaximize()
     else win.maximize()
+  })
+
+  ipcMain.handle(CHANNELS.OPEN_EXTERNAL, async (_event, url: string) => {
+    if (!/^https?:\/\//i.test(url)) return
+    await shell.openExternal(url)
   })
 }
 

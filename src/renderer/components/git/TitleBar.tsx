@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { Search, GitBranch, GitMerge, GitPullRequest, ArrowDownToLine, ArrowUpFromLine, RotateCw, Plus, Settings2, Sun, Moon, Monitor } from 'lucide-react'
 import {
   DropdownMenu,
@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useThemeContext } from '@/App'
 import type { ThemeMode } from '@/hooks/useTheme'
 
@@ -20,6 +21,11 @@ interface TitleBarProps {
   onOpenRepo?: () => void
   onCloneRepo?: () => void
   onInitRepo?: () => void
+  onCreateBranch?: () => void
+  onRenameBranch?: () => void
+  onMerge?: () => void
+  onOpenPR?: () => void
+  onOpenSettings?: () => void
   isFetching?: boolean
   isPulling?: boolean
   isPushing?: boolean
@@ -36,6 +42,11 @@ export function TitleBar({
   onOpenRepo,
   onCloneRepo,
   onInitRepo,
+  onCreateBranch,
+  onRenameBranch,
+  onMerge,
+  onOpenPR,
+  onOpenSettings,
   isFetching,
   isPulling,
   isPushing,
@@ -84,28 +95,46 @@ export function TitleBar({
       </button>
 
       <div className="ml-auto md:ml-0 flex items-center gap-1">
-        <ToolbarButton icon={ArrowDownToLine} label="Pull" loading={isPulling} onClick={onPull} />
-        <ToolbarButton icon={ArrowUpFromLine} label="Push" loading={isPushing} onClick={onPush} />
-        <ToolbarButton icon={RotateCw} label="Fetch" loading={isFetching} onClick={onFetch} />
+        <ToolbarButton icon={ArrowDownToLine} label="Pull" tooltip="Pull from remote" loading={isPulling} onClick={onPull} />
+        <ToolbarButton icon={ArrowUpFromLine} label="Push" tooltip="Push to remote" loading={isPushing} onClick={onPush} />
+        <ToolbarButton icon={RotateCw} label="Fetch" tooltip="Fetch from remote" loading={isFetching} onClick={onFetch} />
         <Divider />
-        <ToolbarButton icon={GitBranch} label="Branch" />
-        <ToolbarButton icon={GitMerge} label="Merge" />
-        <ToolbarButton icon={GitPullRequest} label="PR" />
+        <WithTooltip label="Branch actions">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="relative flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-foreground/80 hover:bg-background/70 active:bg-background transition-colors">
+                <GitBranch className="size-3.5" />
+                <span className="hidden lg:inline">Branch</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onCreateBranch}>Create branch…</DropdownMenuItem>
+              <DropdownMenuItem onClick={onRenameBranch} disabled={!currentBranch}>
+                Rename current branch…
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenPalette}>Checkout branch…</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </WithTooltip>
+        <ToolbarButton icon={GitMerge} label="Merge" tooltip="Merge a branch into current" onClick={onMerge} />
+        <ToolbarButton icon={GitPullRequest} label="PR" tooltip="Open pull request on web" onClick={onOpenPR} />
         <Divider />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="relative flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-foreground/80 hover:bg-background/70 active:bg-background transition-colors">
-              <Plus className="size-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onOpenRepo}>Open repository…</DropdownMenuItem>
-            <DropdownMenuItem onClick={onCloneRepo}>Clone repository…</DropdownMenuItem>
-            <DropdownMenuItem onClick={onInitRepo}>New repository…</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <WithTooltip label="Open / clone / new repository">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="relative flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-foreground/80 hover:bg-background/70 active:bg-background transition-colors">
+                <Plus className="size-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onOpenRepo}>Open repository…</DropdownMenuItem>
+              <DropdownMenuItem onClick={onCloneRepo}>Clone repository…</DropdownMenuItem>
+              <DropdownMenuItem onClick={onInitRepo}>New repository…</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </WithTooltip>
         <ThemeToggle />
-        <ToolbarButton icon={Settings2} label="" />
+        <ToolbarButton icon={Settings2} label="" tooltip="Settings" onClick={onOpenSettings} />
       </div>
     </div>
   )
@@ -120,30 +149,33 @@ function ThemeToggle() {
   const Icon = THEME_ICONS[mode]
   const next = THEME_CYCLE[(THEME_CYCLE.indexOf(mode) + 1) % THEME_CYCLE.length]
   return (
-    <button
-      onClick={() => setMode(next)}
-      title={`Theme: ${THEME_LABELS[mode]} — click for ${THEME_LABELS[next]}`}
-      className="relative flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-foreground/80 hover:bg-background/70 active:bg-background transition-colors"
-    >
-      <Icon className="size-3.5" />
-    </button>
+    <WithTooltip label={`Theme: ${THEME_LABELS[mode]} — click for ${THEME_LABELS[next]}`}>
+      <button
+        onClick={() => setMode(next)}
+        className="relative flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-foreground/80 hover:bg-background/70 active:bg-background transition-colors"
+      >
+        <Icon className="size-3.5" />
+      </button>
+    </WithTooltip>
   )
 }
 
 function ToolbarButton({
   icon: Icon,
   label,
+  tooltip,
   badge,
   loading,
   onClick,
 }: {
   icon: any
   label: string
+  tooltip?: string
   badge?: string
   loading?: boolean
   onClick?: () => void
 }) {
-  return (
+  const button = (
     <button
       onClick={onClick}
       disabled={loading}
@@ -157,6 +189,19 @@ function ToolbarButton({
         </span>
       )}
     </button>
+  )
+  if (!tooltip) return button
+  return <WithTooltip label={tooltip}>{button}</WithTooltip>
+}
+
+function WithTooltip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="bottom" className="text-[11px] px-2 py-1">
+        {label}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

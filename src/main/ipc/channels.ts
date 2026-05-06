@@ -136,4 +136,5 @@ export const CHANNELS = {
 
   // Window controls
   WINDOW_TOGGLE_MAXIMIZE: 'app:window:toggle-maximize',
+  OPEN_EXTERNAL: 'app:open-external',
 } as const

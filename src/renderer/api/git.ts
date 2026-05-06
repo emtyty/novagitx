@@ -106,6 +106,7 @@ declare global {
       platform: NodeJS.Platform
       onRepoOpenedFromOS: (cb: (info: RepoInfo) => void) => () => void
       toggleMaximize: () => Promise<void>
+      openExternal: (url: string) => Promise<void>
     }
   }
 }
