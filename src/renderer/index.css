@@ -173,6 +173,19 @@
   .titlebar-vibrancy {
     background: hsl(var(--titlebar) / 0.85);
     backdrop-filter: saturate(1.6) blur(30px);
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+  .titlebar-vibrancy button,
+  .titlebar-vibrancy a,
+  .titlebar-vibrancy input,
+  .titlebar-vibrancy select,
+  .titlebar-vibrancy textarea,
+  .titlebar-vibrancy [role="button"],
+  .titlebar-vibrancy [role="menu"],
+  .titlebar-vibrancy [role="menuitem"] {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
   }
 }
 
