@@ -13,6 +13,7 @@ module.exports = {
     icon: 'build/icon.icns',
     hardenedRuntime: true,
     gatekeeperAssess: false,
+    artifactName: '${productName}-${version}-${arch}-mac.${ext}',
     target: [
       { target: 'dmg', arch: ['x64', 'arm64'] },
       { target: 'zip', arch: ['x64', 'arm64'] },
