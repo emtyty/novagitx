@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useShortcut } from '@/hooks/useShortcut'
 import { GitBranch, ChevronDown } from 'lucide-react'
 import {
@@ -58,6 +59,7 @@ type GitignoreFile = 'gitignore' | 'gitattributes'
 export default function Repository() {
   const { repoInfo, setRepo } = useRepoStore()
   const repoPath = repoInfo?.path ?? null
+  const qc = useQueryClient()
 
   const [logFilter, setLogFilter] = useState<LogOptions>({})
   const { data: commits = [], isLoading: logLoading } = useLog(repoPath, logFilter)
@@ -143,6 +145,83 @@ export default function Repository() {
   useShortcut(
     { id: 'staging.toggle', label: 'Toggle staging area', defaultCombo: 'Mod+G', group: 'General' },
     useCallback(() => setShowStaging((s) => !s), []),
+  )
+
+  const handleOpenRepo = useCallback(async () => {
+    const info = await gitApi.openRepo()
+    if (info) setRepo(info)
+  }, [setRepo])
+
+  const handleOpenPR = useCallback(async () => {
+    if (!repoPath || !repoInfo) return
+    const remotes = await gitApi.getRemotes(repoPath)
+    const origin = remotes.find((r) => r.name === 'origin') ?? remotes[0]
+    if (!origin) return
+    const url = buildPullRequestUrl(origin.fetchUrl || origin.pushUrl, repoInfo.currentBranch)
+    if (url) window.appOS.openExternal(url)
+  }, [repoPath, repoInfo])
+
+  const handleRefresh = useCallback(() => {
+    if (!repoPath) return
+    qc.invalidateQueries({ queryKey: ['log', repoPath] })
+    qc.invalidateQueries({ queryKey: ['refs', repoPath] })
+    qc.invalidateQueries({ queryKey: ['status', repoPath] })
+  }, [qc, repoPath])
+
+  // Remote
+  useShortcut(
+    { id: 'remote.fetch', label: 'Fetch', defaultCombo: 'Mod+Shift+F', group: 'Remote' },
+    useCallback(() => remoteMutations.fetch.mutate(undefined), [remoteMutations.fetch]),
+  )
+  useShortcut(
+    { id: 'remote.pull', label: 'Pull…', defaultCombo: 'Mod+Shift+P', group: 'Remote' },
+    useCallback(() => setRemoteAction('pull'), []),
+  )
+  useShortcut(
+    { id: 'remote.push', label: 'Push…', defaultCombo: 'Mod+Shift+U', group: 'Remote' },
+    useCallback(() => setRemoteAction('push'), []),
+  )
+  useShortcut(
+    { id: 'remote.openPR', label: 'Open pull request', defaultCombo: 'Mod+Shift+O', group: 'Remote' },
+    handleOpenPR,
+  )
+
+  // Branch
+  useShortcut(
+    { id: 'branch.create', label: 'New branch…', defaultCombo: 'Mod+Shift+B', group: 'Branch' },
+    useCallback(() => setCreateBranch({ open: true, from: repoInfo?.currentBranch ?? '' }), [repoInfo?.currentBranch]),
+  )
+  useShortcut(
+    { id: 'branch.merge', label: 'Merge…', defaultCombo: 'Mod+Shift+M', group: 'Branch' },
+    useCallback(() => setMergeOpen(true), []),
+  )
+  useShortcut(
+    { id: 'branch.rebase', label: 'Rebase…', defaultCombo: 'Mod+Alt+R', group: 'Branch' },
+    useCallback(() => setRebaseOpen(true), []),
+  )
+
+  // Repository
+  useShortcut(
+    { id: 'repo.open', label: 'Open repository…', defaultCombo: 'Mod+O', group: 'Repository' },
+    handleOpenRepo,
+  )
+  useShortcut(
+    { id: 'repo.clone', label: 'Clone…', defaultCombo: 'Mod+Shift+L', group: 'Repository' },
+    useCallback(() => setCloneOpen(true), []),
+  )
+  useShortcut(
+    { id: 'repo.settings', label: 'Settings…', defaultCombo: 'Mod+,', group: 'Repository' },
+    useCallback(() => setSettingsOpen(true), []),
+  )
+
+  // View
+  useShortcut(
+    { id: 'view.refresh', label: 'Refresh', defaultCombo: 'F5', group: 'View' },
+    handleRefresh,
+  )
+  useShortcut(
+    { id: 'view.reflog', label: 'Toggle reflog', defaultCombo: 'Mod+Alt+L', group: 'View' },
+    useCallback(() => setReflogOpen((o) => !o), []),
   )
 
   function handleSelect(c: GitRevision) {
